@@ -1,0 +1,12 @@
+Package: StructuralCovariance
+Type: Package
+Title: An R package for working with structural covariance networks
+Version: 1.0
+Date: 2016-12-23
+Author: Yohan Yee
+Maintainer: Yohan Yee <yohan.yee@sickkids.ca>
+Description: R code to analyze covariance patterns in brain structural
+    properties. Currently being developed with a focus on mouse MRI volumetric data.
+    This code is meant to build upon existing tools being used at the Mouse Imaging
+    Centre in Toronto.
+RoxygenNote: 5.0.1
