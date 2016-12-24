@@ -9,7 +9,7 @@ construct_cormatrix(v, normalize = TRUE, cor.method = "pearson",
   resample_replace = TRUE, quiet = FALSE)
 }
 \arguments{
-\item{v}{volume \code{data.frame} consisting of individuals as rows and volumes as columns}
+\item{v}{volume \code{data.frame} or \code{RMINC::anatGetAll} output consisting of individuals as rows and volumes as columns}
 
 \item{normalize}{logical value denoting whether volumes should be normalized (rows summed to 1)}
 

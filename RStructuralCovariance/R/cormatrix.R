@@ -2,7 +2,7 @@
 #' 
 #' Creates a correlation matrix by computing pairwise correlations between volumes (column vectors of a \code{data.frame})
 #' 
-#' @param v volume \code{data.frame} consisting of individuals as rows and volumes as columns
+#' @param v volume \code{data.frame} or \code{RMINC::anatGetAll} output consisting of individuals as rows and volumes as columns
 #' @param normalize logical value denoting whether volumes should be normalized (rows summed to 1)
 #' @param cor.method character string giving the type of correlation coefficient being computed
 #' @param p.adjust.method character string giving method to use when correcting p values for multiple comparisons

@@ -1,4 +1,6 @@
 # Base object types
+
+#' @export
 as.RSC.object <- function(x, ...) {
   class(x) <- "RSC.object"
   attributes(x) <- c(attributes(x), 
@@ -7,6 +9,7 @@ as.RSC.object <- function(x, ...) {
   return(x)
 }
 
+#' @export
 print.RSC.object <- function(x, ...) {
   cat("RSC object of no set type\n")
   cat("Attributes:\n")
@@ -15,6 +18,8 @@ print.RSC.object <- function(x, ...) {
 }
 
 # Matrix types
+
+#' @export
 as.RSC.matrix <- function(x, ...) {
   x <- as.matrix(x)
   x <- as.RSC.object(x, 
@@ -26,12 +31,14 @@ as.RSC.matrix <- function(x, ...) {
   return(x)
 }
 
+#' @export
 as.RSC.cmatrix <- function(x, ...) {
   x <- as.RSC.matrix(x, RSC.matrix.type="correlation", ...)
   class(x) <- c("RSC.cmatrix", class(x))
   return(x)
 }
 
+#' @export
 as.RSC.pmatrix <- function(x, ...) {
   x <- as.RSC.matrix(x, 
                      RSC.matrix.type="p.value", 
@@ -40,6 +47,7 @@ as.RSC.pmatrix <- function(x, ...) {
   return(x)
 }
 
+#' @export
 print.RSC.matrix <- function(x, ...) {
   switch(as.character(attr(x, "RSC.matrix.type")),
          correlation={ cat("RSC correlation matrix\n") },
@@ -52,6 +60,8 @@ print.RSC.matrix <- function(x, ...) {
 }
 
 # List types 
+
+#' @export
 as.RSC.list <- function(x, ...) {
   x <- as.list(x)
   x <- as.RSC.object(x, 
@@ -62,6 +72,7 @@ as.RSC.list <- function(x, ...) {
   return(x)
 }
 
+#' @export
 as.RSC.matrixlist <- function(x, ...) {
   x <- as.RSC.list(x, RSC.list.type="matrix", ...)
   if (!all(sapply(x, attr, "RSC.object.type")=="matrix")) {
@@ -75,12 +86,14 @@ as.RSC.matrixlist <- function(x, ...) {
   return(x)
 }
 
+#' @export
 as.RSC.speciallist <- function(x, ...) {
   x <- as.RSC.list(x, RSC.list.type="special", ...)
   class(x) <- c("RSC.speciallist", class(x))
   return(x)
 }
 
+#' @export
 print.RSC.list <- function(x, ...) {
   switch(as.character(attr(x, "RSC.list.type")),
          matrix={ cat("RSC matrix list\n") }, 
@@ -105,14 +118,37 @@ print.RSC.list <- function(x, ...) {
   }
 }
 
+# Special types
+
+#' @export
+as.RSC.special <- function(x, ...) {
+  x <- as.RSC.object(x, 
+                     RSC.object.type="special", 
+                     RSC.special.type=NA, ...)
+  class(x) <- c("RSC.special", class(x))
+  return(x)
+}
+
+#' @export
+as.RSC.cormatrix <- function(x, ...) {
+  if (!all(c("correlation", "p.value") %in% names(x))) {
+    stop("List must contain correlation and p.value matrices")
+  }
+  if (class(x$correlation)[1]!="RSC.cmatrix" | attr(x$correlation, "RSC.matrix.type") != "correlation") {
+    stop("Correlation matrix is not the right type")
+  }
+  if (class(x$p.value)[1]!="RSC.pmatrix" | attr(x$p.value, "RSC.matrix.type") != "p.value") {
+    stop("P.value matrix is not the right type")
+  }
+  x <- as.RSC.matrixlist(list(correlation=x$correlation, p.value=x$p.value), 
+                     RSC.object.type="special", 
+                     RSC.special.type="cormatrix", ...)
+  class(x) <- c("RSC.cormatrix", class(x))
+  return(x)
+}
+
 # TODO
 #
-# Special types
-# 
-# as.RSC.special
-# 
-# as.RSC.cormatrix
-# 
 # as.RSC.multicormatrix
 # 
 # print.RSC.special

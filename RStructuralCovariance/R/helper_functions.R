@@ -1,3 +1,4 @@
+#' @export
 get_volume_info <- function(v) {
   subjects <- list(num=dim(v)[1], names=rownames(v))
   structures <- list(num=dim(v)[2], names=colnames(v))
@@ -5,6 +6,7 @@ get_volume_info <- function(v) {
   return(out)
 }
 
+#' @export
 resample_volumes <- function(v, size=NULL, replace=TRUE, prob=NULL) {
   vinfo <- get_volume_info(v)
   size <- (if (is.null(size)) vinfo$subjects$num else size)
@@ -14,10 +16,12 @@ resample_volumes <- function(v, size=NULL, replace=TRUE, prob=NULL) {
   return(v)
 }
 
+#' @export
 normalize_volumes <- function(v) {
   return(v/rowSums(v))
 }
 
+#' @export
 correlate_volumes <- function(v, method="pearson", quiet=FALSE) {
   vinfo <- get_volume_info(v)
   cmat <- pmat <- matrix(NA, nrow=vinfo$structures$num, ncol=vinfo$structures$num, dimnames = list(vinfo$structures$names, vinfo$structures$names))
@@ -43,24 +47,47 @@ correlate_volumes <- function(v, method="pearson", quiet=FALSE) {
   pmat <- as.RSC.pmatrix(pmat)
   
   cormatrix <- as.RSC.cormatrix(list(correlation=cmat, p.value=pmat))
-  return(out)
+  return(cormatrix)
 }
 
+#' @export
+p.adjust <- function(p, method="fdr", n=length(p)) {
+  UseMethod("p.adjust", p)
+}
+
+#' @export
+p.adjust.default <- function(p, method="fdr", n=length(p)) {
+  return(stats::p.adjust(p, method, n))
+}
+
+#' @export
 p.adjust.matrix <- function(x, method="fdr") {
   if (method=="none") { return(x) }
   if (!all(x==t(x))) { stop("Matrix must be symmetric") }
-  p.values.adjusted <- p.adjust(x[lower.tri(x, diag=FALSE)], method = method)
+  p.values.adjusted <- stats::p.adjust(x[lower.tri(x, diag=FALSE)], method = method)
   x[lower.tri(x, diag=FALSE)] <- p.values.adjusted
   x[upper.tri(x, diag=FALSE)] <- t(x)[upper.tri(x, diag=FALSE)]
   return(x)
 }
 
+#' @export
 p.adjust.RSC.pmatrix <- function(x, method="fdr") {
   x <- as.RSC.pmatrix(p.adjust.matrix(x, method=method), p.adjust.method=method)
   return(x)
 }
 
+#' @export
 p.adjust.RSC.cormatrix <- function(x, method="fdr") {
   x$p.value <- as.RSC.pmatrix(p.adjust.matrix(x$p.value, method=method), p.adjust.method=method)
   return(x)
 }
+
+#' @export
+zero_percentile <- function(x) {
+  zp <- ecdf(x)(0)
+  return(zp)
+}
+
+#map_functions <- function(x, function_vector, parallel=FALSE, par.cores=4) {
+#  
+#}
