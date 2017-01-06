@@ -14,12 +14,12 @@
 #' @return an \code{RSC.cormatrix} object
 #' @export
 construct_cormatrix <- function(v, normalize=TRUE, 
-                                cor.method="pearson", p.adjust.method="fdr", 
+                                cor.method="pearson", cor.alternative_hypothesis="two.sided", p.adjust.method="fdr", 
                                 resample=FALSE, resample_size=NULL, resample_replace=TRUE,
-                                quiet=FALSE) {
+                                quiet=FALSE, ...) {
   v <- (if (normalize) { normalize_volumes(v) } else v)
   v <- (if (resample) { resample_volumes(v, size=resample_size, replace=resample_replace) } else v)
-  cormatrix <- correlate_volumes(v, method=cor.method, quiet=quiet)
+  cormatrix <- correlate_volumes(v, method=cor.method, alternate=cor.alternate_hypothesis, quiet=quiet)
   cormatrix <- p.adjust(cormatrix, method=p.adjust.method)
   return(cormatrix)
 }

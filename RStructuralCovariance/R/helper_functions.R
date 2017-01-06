@@ -22,7 +22,7 @@ normalize_volumes <- function(v) {
 }
 
 #' @export
-correlate_volumes <- function(v, method="pearson", quiet=FALSE) {
+correlate_volumes <- function(v, method="pearson", alternative="two.sided", quiet=FALSE, ...) {
   vinfo <- get_volume_info(v)
   cmat <- pmat <- matrix(NA, nrow=vinfo$structures$num, ncol=vinfo$structures$num, dimnames = list(vinfo$structures$names, vinfo$structures$names))
   
@@ -35,7 +35,7 @@ correlate_volumes <- function(v, method="pearson", quiet=FALSE) {
   for (i in 2:vinfo$structures$num) {
     if (!quiet) {cat(paste(i, " ", sep=""))}
     for (j in 1:(i-1)) {
-      ct <- cor.test(v[,i], v[,j], cor.method=method)
+      ct <- cor.test(v[,i], v[,j], method=method, alternative=alternative, ...)
       cmat[i,j] <- cmat[j,i] <- ct$estimate
       pmat[i,j] <- pmat[j,i] <- ct$p.value
     }

@@ -5,8 +5,9 @@
 \title{Construct a correlation matrix by correlating volumes}
 \usage{
 construct_cormatrix(v, normalize = TRUE, cor.method = "pearson",
-  p.adjust.method = "fdr", resample = FALSE, resample_size = NULL,
-  resample_replace = TRUE, quiet = FALSE)
+  cor.alternative_hypothesis = "two.sided", p.adjust.method = "fdr",
+  resample = FALSE, resample_size = NULL, resample_replace = TRUE,
+  quiet = FALSE, ...)
 }
 \arguments{
 \item{v}{volume \code{data.frame} or \code{RMINC::anatGetAll} output consisting of individuals as rows and volumes as columns}

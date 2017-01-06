@@ -9,5 +9,9 @@ Description: R code to analyze covariance patterns in brain structural
     This code is meant to build upon existing tools being used at the Mouse Imaging
     Centre in Toronto.
 Imports:
-  stats
+  stats,
+  corrplot,
+  ggplot2,
+  gplots,
+  grDevices
 RoxygenNote: 5.0.1
