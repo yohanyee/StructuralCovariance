@@ -582,7 +582,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
                           min_rows=min_rows, tol=tol, max_passes=max_passes, logfile=logfile, outfile=outfile),
               terms=list(start=input_terms, final=terms),
               matrices=list(base=basemtx, start=startmtx, peak=peakmtx),
-              optimization=list(data=optimizer_df, peak_r=peak_r, peak_enriched_set=peak_enriched_set),
+              optimization=list(data=optimizer_df[1:pass,], peak_r=peak_r, peak_enriched_set=peak_enriched_set, passes=(pass-1)),
               debug=list(sysinfo=as.list(Sys.info()), timing=list(start=start.time, end=end.time, walltime=(end.time-start.time)), packages=search())
               )
   
