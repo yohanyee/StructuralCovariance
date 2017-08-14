@@ -2,7 +2,8 @@
 # On convergence: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ (note that the proof contained within is flawed according to the 2013 paper published by the same authors)
 # The type option takes the same arguments as in norm()
 #' @export
-successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE) {
+successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
+  X[is.na(X)] <- na.set
   norm_types <- list(f="Frobenius norm", o="One norm", `1`="One norm", i="Infinity norm", m="Maximum modulus", `2`="Spectral (2)-norm")
   norm_difference <- 1
   norm_before <- norm(X, type = type)
