@@ -1,6 +1,7 @@
 # A method of successively normalizing both rows and columns of a matrix, a la Brad Efron and further described by Olshen et al.
 # On convergence: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ (note that the proof contained within is flawed according to the 2013 paper published by the same authors)
 # The type option takes the same arguments as in norm()
+#' @export
 successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE) {
   norm_types <- list(f="Frobenius norm", o="One norm", `1`="One norm", i="Infinity norm", m="Maximum modulus", `2`="Spectral (2)-norm")
   norm_difference <- 1
@@ -27,6 +28,7 @@ successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE) {
 }
 
 # Given a named matrix, get a list of unique index (i,j) pairs to avoid recomputing symmetric elements
+#' @export
 get_unique_indexing <- function(mtx, diagonal_index=-1, set_repeats=NULL) {
   
   # Set row and column names, and determine which names are shared or unique between rows and columns
@@ -99,6 +101,7 @@ get_unique_indexing <- function(mtx, diagonal_index=-1, set_repeats=NULL) {
 }
 
 # Given a named matrix, fill in symmetric pairs (including diagonals if necessary)
+#' @export
 fill_symmetric_elements <- function(mtx, diagonal_index=-1, neg_one_value=1) {
   
   # Get indexing information
@@ -161,6 +164,7 @@ fill_symmetric_elements <- function(mtx, diagonal_index=-1, neg_one_value=1) {
 }
 
 # Construct a template correlation matrix from column names
+#' @export
 construct_template_matrix <- function(strucs_source, strucs_target) {
   strucs_source <- as.character(strucs_source)
   strucs_target <- as.character(strucs_target)
@@ -169,6 +173,7 @@ construct_template_matrix <- function(strucs_source, strucs_target) {
 }
 
 # Construct an empty matrix like another matrix
+#' @export
 construct_like_matrix <- function(like_mtx) {
   strucs_source <- as.character(rownames(like_mtx))
   strucs_target <- as.character(colnames(like_mtx))
@@ -179,6 +184,7 @@ construct_like_matrix <- function(like_mtx) {
 # Populate a matrix by calling a function at every element in an efficient manner
 # Here, efficient means that only unique elements are computed (e.g., symmetric elements are not)
 # function_string must be associated with a function that takes at least two named arguments: rowname, colname
+#' @export
 apply_on_matrix <- function(mtx, function_string, diagonal_index=-1, neg_one_value=1, indexing=NULL, ...) {
   
   # Throw a warning if there already are values in the matrix
@@ -231,6 +237,7 @@ apply_on_matrix <- function(mtx, function_string, diagonal_index=-1, neg_one_val
 }
 
 # Construct a matrix by mapping a function over each element
+#' @export
 construct_matrix <- function(df, strucs_source, strucs_target, function_string, ...) {
   mtx <- construct_template_matrix(strucs_source, strucs_target) 
   mtx <- apply_on_matrix(mtx, function_string, df=df, ...)
@@ -238,11 +245,13 @@ construct_matrix <- function(df, strucs_source, strucs_target, function_string, 
 }
 
 # Conventional cor function adapted for efficient correlation matrix computation
+#' @export
 corr <- function(df, rowname, colname) {
   return(cor(df[, rowname], df[, colname]))
 }
 
 # Dot product adapted for efficient pairwise matrix computation
+#' @export
 dot <- function(df, rowname, colname) {
   return(sum(df[,rowname]*df[,colname]))
 }
@@ -254,6 +263,7 @@ dot <- function(df, rowname, colname) {
 # Interaction terms: array (s x t) of multiplication terms between source and target values
 # n, integer of remaining rows
 # dropped: vector of integers that show the dropped rows in order
+#' @export
 cormatrix_optimizer_precompute_terms <- function(df, strucs_source, strucs_target, indexing_for_interactions=NULL) {
   T_source <- df[,strucs_source]
   T_target <- df[,strucs_target]
@@ -275,6 +285,7 @@ cormatrix_optimizer_precompute_terms <- function(df, strucs_source, strucs_targe
 }
 
 # Optimized Pearson correlation that uses precomputed terms to efficiently calculate the correlation coefficient after dropping a row
+#' @export
 cormatrix_optimizer_drop_row_compute_element <- function(terms, drop_row, rowname, colname) {
   sdrop <- terms$df[drop_row,rowname]
   tdrop <- terms$df[drop_row,colname]
@@ -291,6 +302,7 @@ cormatrix_optimizer_drop_row_compute_element <- function(terms, drop_row, rownam
 }
 
 # Optimized Pearson correlation that uses precomputed terms to efficiently calculate the correlation coefficient 
+#' @export
 cormatrix_optimizer_compute_element <- function(terms, rowname, colname) {
   sterms <- terms$source[,rowname]
   s <- as.numeric(sterms[1])
@@ -305,6 +317,7 @@ cormatrix_optimizer_compute_element <- function(terms, rowname, colname) {
 }
 
 # Efficiently compute the correlation matrix using precomputed terms
+#' @export
 cormatrix_optimizer_compute_matrix <- function(terms, indexing_for_computation=NULL) {
   mtx <- construct_template_matrix(terms$strucs_source, terms$strucs_target)
   mtx <- apply_on_matrix(mtx, "cormatrix_optimizer_compute_element", terms=terms, indexing=indexing_for_computation)
@@ -312,6 +325,7 @@ cormatrix_optimizer_compute_matrix <- function(terms, indexing_for_computation=N
 }
 
 # Efficiently compute the correlation matrix after dropping a row using precomputed terms
+#' @export
 cormatrix_optimizer_drop_row_and_compute_matrix <- function(terms, drop_row, indexing_for_computation=NULL) {
   mtx <- construct_template_matrix(terms$strucs_source, terms$strucs_target)
   mtx <- apply_on_matrix(mtx, "cormatrix_optimizer_drop_row_compute_element", terms=terms, drop_row=drop_row, indexing=indexing_for_computation)
@@ -319,6 +333,7 @@ cormatrix_optimizer_drop_row_and_compute_matrix <- function(terms, drop_row, ind
 }
 
 # Compare (correlate) two matrices by vectorizing unique elements
+#' @export
 cormatrix_optimizer_correlate <- function(mtx, basemtx, indexing_for_comparison=NULL) {
   if (is.null(indexing_for_comparison)) {
     indexing <- get_unique_indexing(mtx, diagonal_index = -1, set_repeats = -1)
@@ -331,6 +346,7 @@ cormatrix_optimizer_correlate <- function(mtx, basemtx, indexing_for_comparison=
 }
 
 # Compare (correlate) two matrices by vectorizing unique elements, with one of the matrices efficiently computed after dropping a row
+#' @export
 cormatrix_optimizer_drop_row_and_correlate <- function(terms, drop_row, basemtx, indexing_for_computation=NULL, indexing_for_comparison=NULL) {
   mtx <- cormatrix_optimizer_drop_row_and_compute_matrix(terms, drop_row, indexing_for_computation)
   r <- cormatrix_optimizer_correlate(mtx, basemtx, indexing_for_comparison=indexing_for_comparison)
@@ -338,6 +354,7 @@ cormatrix_optimizer_drop_row_and_correlate <- function(terms, drop_row, basemtx,
 }
 
 # Update precomputed terms after dropping row(s)
+#' @export
 cormatrix_optimizer_update_terms <- function(terms, drop_rows, indexing_for_interactions=NULL) {
   strucs_source <- terms$strucs_source
   strucs_target <- terms$strucs_target
@@ -371,6 +388,7 @@ cormatrix_optimizer_update_terms <- function(terms, drop_rows, indexing_for_inte
 }
 
 # Determine which row(s) to drop
+#' @export
 cormatrix_optimizer_passthru <- function(terms, basemtx,
                                          batch_size=1, cor_objective=1, 
                                          probabilistic=FALSE, probabilistic_weight_exponent=2, 
@@ -437,6 +455,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
 }
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
+#' @export
 cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_sizes=NULL, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile=NULL, outfile="optimization_output.RData", ...) {
   
   # Start timing
