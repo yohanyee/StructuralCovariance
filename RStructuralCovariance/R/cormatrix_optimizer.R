@@ -412,7 +412,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
   } else {
     if (cluster_initialize) {
       library(doParallel)
-      cl <- makeCluster(parallel, outfile="", homogeneous=TRUE, rscript="/axiom2/projects/software/arch/linux-precise/bin/Rscript", rscript_args="--vanilla")
+      cl <- makeCluster(parallel, outfile="", homogeneous=TRUE, rscript_args="--vanilla")
       registerDoParallel(cl) 
     }
     iterations <- length(avail_rows)
