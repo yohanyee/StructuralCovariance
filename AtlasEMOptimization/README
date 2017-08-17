@@ -1,0 +1,13 @@
+A bunch of python code to optimize a set of labels to best match structural covariance blobs.
+
+Optimization is done using an EM algorithm variant:
+
+EXPECTATION STEP
+-compute structural covariance maps with mean values under each label as seed
+-this will give a blob map with one blob of high correlations around the label
+-this blob corresponds to the new label
+
+MAXIMIZATION STEP
+-take each aforementioned blob, corresponding to each label, and set it as the new label
+
+This is a work in progress.
