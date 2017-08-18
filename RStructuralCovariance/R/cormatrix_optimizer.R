@@ -630,7 +630,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   while ((terms$n > min_rows) & (abs(r-cor_objective)>=tol) & ((pass <= max_passes) | max_passes < 0)) {
     
     # Set batch size
-    this_batch_size <- batch_sizes$batch_size[which(batch_sizes$pass=pass)]
+    this_batch_size <- batch_sizes$batch_size[which(batch_sizes$pass==pass)]
     
     # Print
     current.time <- Sys.time()
@@ -685,7 +685,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     
     # Calculate progress and time
     current.time <- Sys.time()
-    progress <- batch_sizes$progress[which(batch_sizes$pass=pass)]
+    progress <- batch_sizes$progress[which(batch_sizes$pass==pass)]
     progstring <- paste(sprintf("%.2f", 100*progress), "%", sep="")
     eta <- start.time + (current.time - start.time)/progress
     
