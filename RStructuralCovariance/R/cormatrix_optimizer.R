@@ -411,6 +411,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
     }
     cat("Done.\n")
   } else {
+    parallel <- min(parallel, avail_rows)
     if (cluster_initialize) {
       library(doParallel)
       cl <- makeCluster(parallel, outfile="", homogeneous=TRUE, rscript_args="--vanilla")
@@ -457,14 +458,29 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_sizes=NULL, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile=NULL, outfile="optimization_output.RData", ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_sizes=NULL, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", is_Allen_gene=FALSE, ...) {
+  
+  cat("\n##################\n")
+  cat(paste("# INITIALIZATION #\n"))
+  cat("##################\n\n")
   
   # Start timing
   start.time <- Sys.time()
+  cat("\n")
+  cat(paste("* Initializing optimization process\n"))
+  cat(paste("* Number of prunable rows:", dim(X)[1], "\n"))
+  cat(paste("* Starting time:", start.time, "\n"))
+  cat("\n")
   
   # Precompute base matrix (to which the X data's correlation matrix is optimized, the indexing terms, and the correlation terms)
+  cat("\n")
+  cat(paste("* Computing base matrix to optimize to\n"))
+  cat("\n")
   basemtx <- construct_matrix(Y, strucs_source, strucs_target, function_string = "corr")
   if (precompute_indexing) {
+    cat("\n")
+    cat(paste("* Precomputing matrix indices\n"))
+    cat("\n")
     indexing_for_computation <- get_unique_indexing(basemtx, diagonal_index = -1, set_repeats = NULL)
     indexing_for_comparison <- get_unique_indexing(basemtx, diagonal_index = -1, set_repeats = -1)
     indexing_for_interactions <- get_unique_indexing(basemtx, diagonal_index = NULL, set_repeats = NULL)
@@ -473,23 +489,47 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     indexing_for_comparison <- NULL
     indexing_for_interactions <- NULL
   }
+  cat("\n")
+  cat(paste("* Precomputing correlation terms\n"))
+  cat("\n")
   terms <- cormatrix_optimizer_precompute_terms(X, strucs_source=strucs_source, strucs_target=strucs_target, indexing_for_interactions=indexing_for_interactions)
   input_terms <- terms
   
   # Compute base data comparison before dropping rows
+  cat("\n")
+  cat(paste("* Computing starting matrix\n"))
   startmtx <- cormatrix_optimizer_compute_matrix(terms=terms, indexing_for_computation=indexing_for_computation)
   r <- cormatrix_optimizer_correlate(startmtx, basemtx, indexing_for_comparison=indexing_for_comparison)
-    
+  cat(paste("* Initial r-value:", r, "\n"))
+  cat("\n")
+  
+  # Base gene set
+  cat("\n")
+  cat(paste("* Determining base gene set\n"))
+  cat("\n")
+  base_set <- rownames(terms$df)
+  
   # Collect initial data
-  optimizer_df <- data.frame(pass=numeric(terms$n_original+1), num_rows_left=numeric(terms$n_original+1), r=numeric(terms$n_original+1), dropped_rows=character(terms$n_original+1))
+  cat("\n")
+  cat(paste("* Logging initial data\n"))
+  cat("\n")
+  current.time <- Sys.time()
+  optimizer_df <- data.frame(pass=numeric(terms$n_original+1), num_rows_left=numeric(terms$n_original+1), r=numeric(terms$n_original+1), dropped_rows=character(terms$n_original+1), current_time=character(terms$n_original+1), elapsed_time=character(terms$n_original+1))
   optimizer_df$pass[1] <- 0
   optimizer_df$num_rows_left[1] <- terms$n
   optimizer_df$r[1] <- r
   optimizer_df$dropped_rows[1] <- ""
   optimizer_df$dropped_rows <- as.character(optimizer_df$dropped_rows)
+  optimizer_df$current_time[1] <- current.time
+  optimizer_df$current_time <- as.character(optimizer_df$current_time)
+  optimizer_df$elapsed_time[1] <- current.time - start.time
+  optimizer_df$elapsed_time <- as.character(optimizer_df$elapsed_time)
   
   # Log data if required
   if (!is.null(logfile)) {
+    cat("\n")
+    cat(paste("* Writing initial data to file:", logfile, "\n"))
+    cat("\n")
     logrow <- optimizer_df[1,]
     if (file.exists(logfile)) {
       logcopy <- paste(logfile, "backup", paste(sample(c(letters, LETTERS, 0:9), 10), collapse = ""), sep="_")
@@ -500,12 +540,25 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   }
   
   # Begin optimization
+  cat("\n################\n")
+  cat(paste("# OPTIMIZATION #\n"))
+  cat("################\n\n")
+  terminated <- FALSE
+  objective_reached <- FALSE
+  termination_reason <- NA
   pass <- 1
   while ((terms$n > min_rows) & (abs(r-cor_objective)>=tol) & ((pass <= max_passes) | max_passes < 0)) {
     # Print
+    current.time <- Sys.time()
     cat("\n")
-    cat(paste("*** Number of rows remaining:", terms$n, "***"))
-    cat("\n\n")
+    cat(paste("* Iteration:", pass, "of", num_passes, "\n"))
+    cat(paste("* Number of rows remaining:", terms$n, "\n"))
+    cat(paste("* R-value:", r, "\n"))
+    cat(paste("* Current time:", current.time, "\n"))
+    cat(paste("* Time elapsed:", current.time - start.time, "\n"))
+    cat(paste("* Estimated time of completion:", , "\n"))
+    cat(paste("* Progress:", , "\n"))
+    cat("\n")
     
     # Set batch size
     if (!is.null(batch_definitions)) {
@@ -527,6 +580,8 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     
     # Return if batch size will result in going below min_rows
     if ((terms$n - this_batch_size) < min_rows) {
+      terminated <- TRUE
+      termination_reason <- "ROW_LIMIT_REACHED"
       break
     }
     
@@ -545,10 +600,13 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     terms <- optimize$terms
     
     # Collect data
+    current.time <- Sys.time()
     optimizer_df$pass[pass+1] <- pass
     optimizer_df$num_rows_left[pass+1] <- terms$n
     optimizer_df$r[pass+1] <- optimize$r
     optimizer_df$dropped_rows[pass+1] <- paste(optimize$dropped_rows, collapse=";")
+    optimizer_df$current_time[pass+1] <- current.time
+    optimizer_df$elapsed_time[pass+1] <- current.time - start.time
     
     # Log data if required
     if (!is.null(logfile)) {
@@ -564,17 +622,54 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     registerDoSEQ()
   }
   
+  # Record termination
+  terminated <- TRUE
+  if (terms$n <= min_rows) {
+    termination_reason <- "ROW_LIMIT_REACHED"
+  } else if (abs(r-cor_objective)<tol) {
+    termination_reason <- "OBJECTIVE_REACHED"
+    objective_reached <- TRUE
+  } else if (pass > max_passes) {
+    termination_reason <- "ITERATION_LIMIT_REACHED"
+  } else {
+    termination_reason <- "UNKNOWN"
+  }
+  cat("\n")
+  cat(paste("* Optimization terminated\n"))
+  cat(paste("* Termination due to:", termination_reason, "\n"))
+  cat(paste("* Cor objective reached:", objective_reached, "\n"))
+  cat("\n")
+
+  cat("\n################\n")
+  cat(paste("# FINISHING UP #\n"))
+  cat("################\n\n")
+    
   # Compute peak enrichment data
+  cat("\n")
+  cat(paste("* Computing peak enrichment data and matrix\n"))
+  cat("\n")
   peak_row <- which.min(abs(optimizer_df$r-cor_objective))
   peak_r <- optimizer_df$r[peak_row]
   removed_set <- unlist(strsplit(optimizer_df$dropped_rows[2:peak_row], ";"))
   peak_enriched_set <- setdiff(rownames(terms$df), removed_set)
   peakmtx <- construct_matrix(terms$df[(which(rownames(terms$df) %in% peak_enriched_set)),], strucs_source, strucs_target, function_string = "corr")
   
+  # If Allen Institute data, then relabel rownames to reflect unique genes
+  if (is_Allen_gene) {
+    cat("\n")
+    cat(paste("* Converting Allen Institute rownames to gene lists\n"))
+    cat("\n")
+    base_set <- unique(sapply(strsplit(base_set, "_sid"), "[[", 1))
+    peak_enriched_set <- unique(sapply(strsplit(peak_enriched_set, "_sid"), "[[", 1))
+  }
+  
   # End timing
   end.time <- Sys.time()
   
   # Construct output object
+  cat("\n")
+  cat(paste("* Constructing output\n"))
+  cat("\n")
   out <- list(inputs=list(X=X, Y=Y, strucs_source=strucs_source, strucs_target=strucs_target, 
                           batch_sizes=batch_sizes, batch_definitions=batch_definitions, 
                           precompute_indexing=precompute_indexing, cor_objective=cor_objective, 
@@ -583,14 +678,36 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
                           min_rows=min_rows, tol=tol, max_passes=max_passes, logfile=logfile, outfile=outfile),
               terms=list(start=input_terms, final=terms),
               matrices=list(base=basemtx, start=startmtx, peak=peakmtx),
-              optimization=list(data=optimizer_df[1:pass,], peak_r=peak_r, peak_enriched_set=peak_enriched_set, passes=(pass-1)),
+              optimization=list(data=optimizer_df[1:pass,],  passes=(pass-1), terminated=terminated, termination_reason=termination_reason, objective_reached=objective_reached),
+              enrichment=list(base_set=base_set, peak_r=peak_r, peak_enriched_set=peak_enriched_set),
               debug=list(sysinfo=as.list(Sys.info()), timing=list(start=start.time, end=end.time, walltime=(end.time-start.time)), packages=search())
               )
   
   # Save object if desired
   if (!is.null(outfile)) {
+    cat("\n")
+    cat(paste("* Saving output to:", outfile,"\n"))
+    cat("\n")
     save("out", file = outfile)
   }
+  
+  if (!is.null(baserowfile)) {
+    cat("\n")
+    cat(paste("* Saving base set to:", baserowfile,"\n"))
+    cat("\n")
+    write.table(base_set, file = baserowfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
+  }
+  
+  if (!is.null(enrichedrowfile)) {
+    cat("\n")
+    cat(paste("* Saving enriched set to:", enrichedrowfile,"\n"))
+    cat("\n")
+    write.table(peak_enriched_set, file = enrichedrowfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
+  }
+  
+  cat("\n########\n")
+  cat(paste("# DONE #\n"))
+  cat("########\n\n")
   
   #Return
   return(out)
