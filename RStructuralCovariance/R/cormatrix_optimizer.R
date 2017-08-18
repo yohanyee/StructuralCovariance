@@ -531,7 +531,7 @@ batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_pa
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", is_Allen_gene=FALSE, ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", is_Allen_gene=FALSE, ...) {
   
   cat("\n##################\n")
   cat(paste("# INITIALIZATION #\n"))
@@ -639,6 +639,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     # Print
     current.time <- Sys.time()
     cat("\n")
+    cat(paste("* ---------------------------------------------------\n"))
     cat(paste("* STARTING PASS\n"))
     cat(paste("* Iteration:", pass, "of", max_passes, "\n"))
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
@@ -701,6 +702,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     cat(paste("* Estimated time of completion:", eta, "\n"))
     cat(paste("* Progress:", progstring, "\n"))
     cat(paste("* FINISHED PASS\n"))
+    cat(paste("* ---------------------------------------------------\n"))
     cat("\n")
     
     # Increase pass
@@ -743,6 +745,10 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   peak_enriched_set <- setdiff(rownames(terms$df), removed_set)
   peakmtx <- construct_matrix(terms$df[(which(rownames(terms$df) %in% peak_enriched_set)),], strucs_source, strucs_target, function_string = "corr")
   
+  # Compute ranked list enrichment
+  ranked_list <- rev(unlist(strsplit(optimizer_df$dropped_rows, ";")))
+  ranked_list_to_peak <- rev(unlist(strsplit(optimizer_df$dropped_rows[2:peak_row], ";")))
+  
   # If Allen Institute data, then relabel rownames to reflect unique genes
   if (is_Allen_gene) {
     cat("\n")
@@ -750,8 +756,10 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     cat("\n")
     base_set <- unique(sapply(strsplit(base_set, "_sid"), "[[", 1))
     peak_enriched_set <- unique(sapply(strsplit(peak_enriched_set, "_sid"), "[[", 1))
+    ranked_list <- unique(sapply(strsplit(ranked_list, "_sid"), "[[", 1))
+    ranked_list_to_peak <- unique(sapply(strsplit(ranked_list_to_peak, "_sid"), "[[", 1))
   }
-  
+
   # End timing
   end.time <- Sys.time()
   
@@ -764,11 +772,14 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
                           precompute_indexing=precompute_indexing, cor_objective=cor_objective, 
                           probabilistic=optimize$computation_info$probabilistic, probabilistic_weight_exponent=optimize$computation_info$probabilistic_weight_exponent, 
                           parallel=optimize$computation_info$parallel, 
-                          min_rows=min_rows, tol=tol, max_passes=max_passes, logfile=logfile, outfile=outfile),
+                          min_rows=min_rows, tol=tol, max_passes=max_passes, 
+                          logfile=logfile, outfile=outfile, 
+                          baserowfile=baserowfile, enrichedrowfile=enrichedrowfile, rankedlistfile=rankedlistfile, rankedtopeakfile=rankedtopeakfile,
+                          ...),
               terms=list(start=input_terms, final=terms),
               matrices=list(base=basemtx, start=startmtx, peak=peakmtx),
               optimization=list(data=optimizer_df[1:pass,],  passes=(pass-1), terminated=terminated, termination_reason=termination_reason, objective_reached=objective_reached),
-              enrichment=list(base_set=base_set, peak_r=peak_r, peak_enriched_set=peak_enriched_set),
+              enrichment=list(base_set=base_set, peak_r=peak_r, peak_enriched_set=peak_enriched_set, ranked_list=ranked_list, ranked_list_to_peak=ranked_list_to_peak),
               debug=list(sysinfo=as.list(Sys.info()), timing=list(start=start.time, end=end.time, walltime=(end.time-start.time)), packages=search())
               )
   
@@ -792,6 +803,20 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     cat(paste("* Saving enriched set to:", enrichedrowfile,"\n"))
     cat("\n")
     write.table(peak_enriched_set, file = enrichedrowfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
+  }
+  
+  if (!is.null(rankedlistfile)) {
+    cat("\n")
+    cat(paste("* Saving ranked list to:", rankedlistfile,"\n"))
+    cat("\n")
+    write.table(ranked_list, file = rankedlistfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
+  }
+  
+  if (!is.null(rankedtopeakfile)) {
+    cat("\n")
+    cat(paste("* Saving enriched set to:", rankedtopeakfile,"\n"))
+    cat("\n")
+    write.table(ranked_list_to_peak, file = rankedtopeakfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
   }
   
   cat("\n########\n")
