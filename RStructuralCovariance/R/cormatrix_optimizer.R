@@ -572,6 +572,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   cat("\n")
   cat(paste("* Precomputing batch sizes\n"))
   batch_sizes <- batch_sizer(num_starting_rows=terms$n_original, batch_definitions=batch_definitions, min_rows=min_rows, max_passes=max_passes)
+  max_passes_input <- max_passes
   max_passes <- max(batch_sizes$pass)
   cat(paste("* Maximum number of passes:", max_passes,"\n"))
   cat("\n")
@@ -772,7 +773,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
                           precompute_indexing=precompute_indexing, cor_objective=cor_objective, 
                           probabilistic=optimize$computation_info$probabilistic, probabilistic_weight_exponent=optimize$computation_info$probabilistic_weight_exponent, 
                           parallel=optimize$computation_info$parallel, 
-                          min_rows=min_rows, tol=tol, max_passes=max_passes, 
+                          min_rows=min_rows, tol=tol, max_passes=max_passes_input, 
                           logfile=logfile, outfile=outfile, 
                           baserowfile=baserowfile, enrichedrowfile=enrichedrowfile, rankedlistfile=rankedlistfile, rankedtopeakfile=rankedtopeakfile,
                           ...),
