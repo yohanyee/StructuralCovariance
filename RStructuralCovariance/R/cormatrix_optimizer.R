@@ -354,6 +354,7 @@ cormatrix_optimizer_drop_row_and_correlate <- function(terms, drop_row, basemtx,
   return(r)
 }
 
+
 # Update precomputed terms after dropping row(s)
 #' @export
 cormatrix_optimizer_update_terms <- function(terms, drop_rows, indexing_for_interactions=NULL) {
@@ -456,9 +457,80 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
   return(out)
 }
 
+
+# Compute batch sizes and progress
+batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_passes=-1) {
+  n <- num_starting_rows
+  batch_df <- data.frame(pass=numeric(n), batch_size=numeric(n))
+  
+  if (is.character(batch_definitions)) {
+    batch_definitions <- read.csv(batch_definitions)
+  }
+  
+  pass <- 1
+  while ((n > min_rows) & ((pass <= max_passes) | max_passes < 0)) {
+    
+    # Set batch size
+    if (is.vector(batch_definitions)) {
+      this_batch_size <- ifelse(is.na(batch_definitions[pass]), batch_definitions[length(batch_definitions)], batch_definitions[pass])
+    } else if (is.data.frame(batch_definitions)) {
+      if (all(c("below", "aboveeq", "batch_size") %in% colnames(batch_definitions))) {
+        this_batch_size <- batch_definitions$batch_size[which(batch_definitions$below > n & batch_definitions$aboveeq <= n)]
+        if (length(this_batch_size) == 0) {
+          warning("Could not find batch size in definitions. Using batch size of 1.")
+          this_batch_size <- 1
+        }
+        if (length(this_batch_size) > 1) {
+          this_batch_size <- this_batch_size[1]
+          warning(paste("Multiple batch sizes fit this definition. Using batch size:", this_batch_size))
+        }
+      } else if (all(colnames(batch_df) %in% colnames(batch_definitions))) {
+        this_batch_size <- batch_definitions$batch_size[which(batch_definitions$pass==pass)]
+        if (length(this_batch_size) == 0) {
+          warning("Could not find batch size in definitions. Using batch size of 1.")
+          this_batch_size <- 1
+        }
+      } else {
+        warning("Could not understand batch definitions. Using batch size of 1.")
+        this_batch_size <- 1
+      }
+    } else if (is.function(batch_definitions)) {
+      tryCatch({
+        this_batch_size <- do.call(batch_definitions, args=list(pass=pass, num_starting_rows=num_starting_rows))
+      }, error=function(e) {
+        warning("Batch definition function returned error. Using batch size of 1.")
+        this_batch_size <- 1
+      }
+      )
+    } else if (is.null(batch_definitions)) {
+      this_batch_size <- 1
+    } else {
+      warning("Could not understand batch definitions. Using batch size of 1.")
+      this_batch_size <- 1
+    }
+    
+    # Terminate if batch_size will result in less than minimum rows
+    if ((n - this_batch_size) < min_rows) {
+      break
+    }
+    
+    # Log to batch_df
+    batch_df$pass[pass] <- pass
+    batch_df$batch_size[pass] <- this_batch_size
+    
+    n <- n - this_batch_size
+    pass <- pass + 1
+  }
+  batch_df <- batch_df[1:(pass-1),]
+  batch_iter <- sum(batch_df$batch_size)
+  batch_df$progress <- cumsum(batch_df$batch_size / batch_iter)
+  return(batch_df)
+}
+
+
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_sizes=NULL, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", is_Allen_gene=FALSE, ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", is_Allen_gene=FALSE, ...) {
   
   cat("\n##################\n")
   cat(paste("# INITIALIZATION #\n"))
@@ -494,6 +566,14 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   cat("\n")
   terms <- cormatrix_optimizer_precompute_terms(X, strucs_source=strucs_source, strucs_target=strucs_target, indexing_for_interactions=indexing_for_interactions)
   input_terms <- terms
+  
+  # Compute batch sizes
+  cat("\n")
+  cat(paste("* Precomputing batch sizes\n"))
+  batch_sizes <- batch_sizer(num_starting_rows=terms$n_original, batch_definitions=batch_definitions, min_rows=min_rows, max_passes=max_passes)
+  max_passes <- max(batch_sizes$pass)
+  cat(paste("* Maximum number of passes:", max_passes,"\n"))
+  cat("\n")
   
   # Compute base data comparison before dropping rows
   cat("\n")
@@ -548,35 +628,21 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   termination_reason <- NA
   pass <- 1
   while ((terms$n > min_rows) & (abs(r-cor_objective)>=tol) & ((pass <= max_passes) | max_passes < 0)) {
+    
+    # Set batch size
+    this_batch_size <- batch_sizes$batch_size[which(batch_sizes$pass=pass)]
+    
     # Print
     current.time <- Sys.time()
     cat("\n")
+    cat(paste("* STARTING PASS\n"))
     cat(paste("* Iteration:", pass, "of", num_passes, "\n"))
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
-    cat(paste("* R-value:", r, "\n"))
-    cat(paste("* Current time:", current.time, "\n"))
-    cat(paste("* Time elapsed:", current.time - start.time, "\n"))
-    cat(paste("* Estimated time of completion:", , "\n"))
-    cat(paste("* Progress:", , "\n"))
+    cat(paste("* Batch size:", this_batch_size, "\n"))
+    cat(paste("* R-value before:", r, "\n"))
     cat("\n")
     
-    # Set batch size
-    if (!is.null(batch_definitions)) {
-      if (!is.null(batch_sizes)) {
-        warning("Only one of batch_definitions and batch_sizes should be set. Using batch_definitions")
-      } 
-      this_batch_size <- batch_definitions$batch_size[which(batch_definitions$below > terms$n & batch_definitions$aboveeq <= terms$n)]
-      if (length(this_batch_size) > 1) {
-        this_batch_size <- this_batch_size[1]
-        warning(paste("Multiple batch sizes fit this definition. Using batch size:", this_batch_size))
-      }
-    } else {
-      if (!is.null(batch_sizes)) {
-        this_batch_size <- ifelse(is.na(batch_sizes[pass]), batch_sizes[length(batch_sizes)], batch_sizes[pass])
-      } else {
-        this_batch_size <- 1
-      }
-    }
+
     
     # Return if batch size will result in going below min_rows
     if ((terms$n - this_batch_size) < min_rows) {
@@ -614,9 +680,28 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
       write.table(logrow, file = logfile, append = TRUE, quote=4, sep = ",", row.names = FALSE, col.names = FALSE)
     }
     
+    # Set r
+    r <- optimize$r
+    
+    # Calculate progress and time
+    current.time <- Sys.time()
+    progress <- batch_sizes$progress[which(batch_sizes$pass=pass)]
+    progstring <- paste(sprintf("%.2f", 100*progress), "%", sep="")
+    eta <- start.time + (current.time - start.time)/progress
+    
+    cat("\n")
+    cat(paste("* R-value after:", r, "\n"))
+    cat(paste("* Number of rows remaining:", terms$n, "\n"))
+    cat(paste("* Current time:", current.time, "\n"))
+    cat(paste("* Total time elapsed:", current.time - start.time, "\n"))
+    cat(paste("* Estimated time of completion:", eta, "\n"))
+    cat(paste("* Progress:", progstring, "\n"))
+    cat(paste("* FINISHED PASS\n"))
+    cat("\n")
+    
     # Increase pass
     pass <- pass + 1
-    r <- optimize$r
+    
   }
   if (optimize$computation_info$parallel > 1) {
     registerDoSEQ()
