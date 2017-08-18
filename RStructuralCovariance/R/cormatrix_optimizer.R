@@ -412,7 +412,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
     }
     cat("Done.\n")
   } else {
-    parallel <- min(parallel, avail_rows)
+    parallel <- min(parallel, length(avail_rows))
     if (cluster_initialize) {
       library(doParallel)
       cl <- makeCluster(parallel, outfile="", homogeneous=TRUE, rscript_args="--vanilla")
@@ -459,6 +459,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
 
 
 # Compute batch sizes and progress
+#' @export
 batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_passes=-1) {
   n <- num_starting_rows
   batch_df <- data.frame(pass=numeric(n), batch_size=numeric(n))
@@ -594,16 +595,19 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   cat(paste("* Logging initial data\n"))
   cat("\n")
   current.time <- Sys.time()
-  optimizer_df <- data.frame(pass=numeric(terms$n_original+1), num_rows_left=numeric(terms$n_original+1), r=numeric(terms$n_original+1), dropped_rows=character(terms$n_original+1), current_time=character(terms$n_original+1), elapsed_time=character(terms$n_original+1))
+  optimizer_df <- data.frame(pass=numeric(max_passes+1), num_rows_left=numeric(max_passes+1), r=numeric(max_passes+1), dropped_rows=character(max_passes+1), current_time=character(max_passes+1), elapsed_time=character(max_passes+1))
   optimizer_df$pass[1] <- 0
   optimizer_df$num_rows_left[1] <- terms$n
   optimizer_df$r[1] <- r
   optimizer_df$dropped_rows[1] <- ""
   optimizer_df$dropped_rows <- as.character(optimizer_df$dropped_rows)
-  optimizer_df$current_time[1] <- current.time
+  optimizer_df$current_time <- ""
   optimizer_df$current_time <- as.character(optimizer_df$current_time)
-  optimizer_df$elapsed_time[1] <- current.time - start.time
+  optimizer_df$current_time[1] <- as.character(current.time)
+  optimizer_df$elapsed_time <- ""
   optimizer_df$elapsed_time <- as.character(optimizer_df$elapsed_time)
+  optimizer_df$elapsed_time[1] <- as.character(current.time - start.time)
+  
   
   # Log data if required
   if (!is.null(logfile)) {
@@ -636,7 +640,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     current.time <- Sys.time()
     cat("\n")
     cat(paste("* STARTING PASS\n"))
-    cat(paste("* Iteration:", pass, "of", num_passes, "\n"))
+    cat(paste("* Iteration:", pass, "of", max_passes, "\n"))
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
     cat(paste("* Batch size:", this_batch_size, "\n"))
     cat(paste("* R-value before:", r, "\n"))
@@ -671,8 +675,8 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     optimizer_df$num_rows_left[pass+1] <- terms$n
     optimizer_df$r[pass+1] <- optimize$r
     optimizer_df$dropped_rows[pass+1] <- paste(optimize$dropped_rows, collapse=";")
-    optimizer_df$current_time[pass+1] <- current.time
-    optimizer_df$elapsed_time[pass+1] <- current.time - start.time
+    optimizer_df$current_time[pass+1] <- as.character(current.time)
+    optimizer_df$elapsed_time[pass+1] <- as.character(current.time - start.time)
     
     # Log data if required
     if (!is.null(logfile)) {
