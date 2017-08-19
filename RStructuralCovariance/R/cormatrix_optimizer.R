@@ -415,7 +415,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
     parallel <- min(parallel, length(avail_rows))
     if (cluster_initialize) {
       library(doParallel)
-      cl <- makeCluster(parallel, outfile="", homogeneous=TRUE, rscript_args="--vanilla")
+      cl <- makeCluster(parallel, outfile="", rscript_args="--vanilla")
       registerDoParallel(cl) 
     }
     iterations <- length(avail_rows)
