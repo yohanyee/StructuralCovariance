@@ -531,7 +531,7 @@ batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_pa
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization_output.log", outfile="optimization_output.RData", baserowfile="optimization_base.txt", enrichedrowfile="optimization_enriched.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", is_Allen_gene=FALSE, ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization.log", outfile="optimization.RData", baserowfile="optimization_base_set.txt", enrichedrowfile="optimization_enriched_set.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", timingfile="optimization.progress", is_Allen_gene=FALSE, ...) {
   
   cat("\n##################\n")
   cat(paste("# INITIALIZATION #\n"))
@@ -695,6 +695,10 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     progstring <- paste(sprintf("%.2f", 100*progress), "%", sep="")
     eta <- start.time + (current.time - start.time)/progress
     
+    if (!is.null(timingfile)) {
+      write.table(paste("Progress:", progstring, ", estimated time of completion:", eta), file = timingfile, append=TRUE, quote=FALSE, row.names=FALSE, col.names=FALSE)
+    }
+    
     cat("\n")
     cat(paste("* R-value after:", r, "\n"))
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
@@ -818,6 +822,12 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     cat(paste("* Saving enriched set to:", rankedtopeakfile,"\n"))
     cat("\n")
     write.table(ranked_list_to_peak, file = rankedtopeakfile, row.names = FALSE, col.names = FALSE, quote=FALSE)
+  }
+  
+  if (!is.null(timingfile)) {
+    if (file.exists(timingfile)) {
+      file.remove(timingfile)
+    }
   }
   
   cat("\n########\n")
