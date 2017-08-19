@@ -394,14 +394,15 @@ cormatrix_optimizer_update_terms <- function(terms, drop_rows, indexing_for_inte
 cormatrix_optimizer_passthru <- function(terms, basemtx,
                                          batch_size=1, cor_objective=1, 
                                          probabilistic=FALSE, probabilistic_weight_exponent=2, 
-                                         parallel=4, cluster_initialize=TRUE, cluster_shutdown=TRUE,
+                                         requested_workers=6, cluster_initialize=TRUE, cluster_shutdown=TRUE,
                                          indexing_for_computation=NULL, indexing_for_comparison=NULL, indexing_for_interactions=NULL) {
   avail_rows <- rownames(terms$df)[!(rownames(terms$df) %in% terms$dropped_rows)]
   num_rows <- length(avail_rows)
   objective_df <- data.frame(row=character(num_rows), cor=numeric(num_rows), dist_to_objective=numeric(num_rows))
   objective_df$row <- as.character(objective_df$row)
-  if (parallel==1) {
+  if (requested_workers==1) {
     i <- 1
+    parallel <- 1
     for (ar in avail_rows) {
       r <- cormatrix_optimizer_drop_row_and_correlate(terms, drop_row = ar, basemtx = basemtx, indexing_for_computation=indexing_for_computation, indexing_for_comparison=indexing_for_comparison)
       objective_df$row[i] <- as.character(ar)
@@ -412,7 +413,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
     }
     cat("Done.\n")
   } else {
-    parallel <- min(parallel, length(avail_rows))
+    parallel <- min(requested_workers, length(avail_rows))
     if (cluster_initialize) {
       library(doParallel)
       cl <- makeCluster(parallel, outfile="", rscript_args="--vanilla")
@@ -452,7 +453,7 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
   # Compute new correlation with basemtx and return that
   newmtx <- cormatrix_optimizer_compute_matrix(terms = newterms, indexing_for_computation=indexing_for_computation)
   r <- cormatrix_optimizer_correlate(newmtx, basemtx, indexing_for_comparison=indexing_for_comparison)
-  computation_info <- list(probabilistic=probabilistic, probabilistic_weight_exponent=probabilistic_weight_exponent, parallel=parallel)
+  computation_info <- list(probabilistic=probabilistic, probabilistic_weight_exponent=probabilistic_weight_exponent, requested_workers=requested_workers, parallel=parallel)
   out <- list(terms=newterms, r=r, dropped_rows=rows_to_drop, computation_info=computation_info)
   return(out)
 }
@@ -531,7 +532,7 @@ batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_pa
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, logfile="optimization.log", outfile="optimization.RData", baserowfile="optimization_base_set.txt", enrichedrowfile="optimization_enriched_set.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", timingfile="optimization.progress", is_Allen_gene=FALSE, ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, requested_workers=6, logfile="optimization.log", outfile="optimization.RData", baserowfile="optimization_base_set.txt", enrichedrowfile="optimization_enriched_set.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", timingfile="optimization.progress", is_Allen_gene=FALSE, ...) {
   
   cat("\n##################\n")
   cat(paste("# INITIALIZATION #\n"))
@@ -646,6 +647,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
     cat(paste("* Batch size:", this_batch_size, "\n"))
     cat(paste("* R-value before:", r, "\n"))
+    cat(paste("* Requested workers:", requested_workers, "\n"))
     cat("\n")
     
 
@@ -668,7 +670,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     #optimize <- cormatrix_optimizer_passthru(terms, basemtx, batch_size=this_batch_size, cor_objective=cor_objective,
     #                                        indexing_for_computation=indexing_for_computation, indexing_for_comparison=indexing_for_comparison, indexing_for_interactions=indexing_for_interactions, 
     #                                        cluster_initialize=cluster_start, cluster_shutdown=cluster_stop, ...)
-    optimize <- cormatrix_optimizer_passthru(terms, basemtx, batch_size=this_batch_size, cor_objective=cor_objective, indexing_for_computation=indexing_for_computation, indexing_for_comparison=indexing_for_comparison, indexing_for_interactions=indexing_for_interactions, parallel=6, cluster_initialize = cluster_start, cluster_shutdown = cluster_stop)
+    optimize <- cormatrix_optimizer_passthru(terms, basemtx, batch_size=this_batch_size, cor_objective=cor_objective, indexing_for_computation=indexing_for_computation, indexing_for_comparison=indexing_for_comparison, indexing_for_interactions=indexing_for_interactions, requested_workers=requested_workers, cluster_initialize = cluster_start, cluster_shutdown = cluster_stop)
     terms <- optimize$terms
     
     # Collect data
@@ -700,6 +702,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     }
     
     cat("\n")
+    cat(paste("* Workers received:", optimize$computation_info$parallel, "\n"))
     cat(paste("* R-value after:", r, "\n"))
     cat(paste("* Number of rows remaining:", terms$n, "\n"))
     cat(paste("* Current time:", current.time, "\n"))
@@ -714,7 +717,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
     pass <- pass + 1
     
   }
-  if (optimize$computation_info$parallel > 1) {
+  if (requested_workers > 1) {
     registerDoSEQ()
   }
   
@@ -776,7 +779,7 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
                           batch_sizes=batch_sizes, batch_definitions=batch_definitions, 
                           precompute_indexing=precompute_indexing, cor_objective=cor_objective, 
                           probabilistic=optimize$computation_info$probabilistic, probabilistic_weight_exponent=optimize$computation_info$probabilistic_weight_exponent, 
-                          parallel=optimize$computation_info$parallel, 
+                          requested_workers=requested_workers, 
                           min_rows=min_rows, tol=tol, max_passes=max_passes_input, 
                           logfile=logfile, outfile=outfile, 
                           baserowfile=baserowfile, enrichedrowfile=enrichedrowfile, rankedlistfile=rankedlistfile, rankedtopeakfile=rankedtopeakfile,
