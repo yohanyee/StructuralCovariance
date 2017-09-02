@@ -1,5 +1,4 @@
-
-update_covariance_matrix <- function(prior_covmtx, prior_n, update_covmtx, update_n, confidence_intervals=NULL, ci_sample_size=10000) {
+invwishart_updating <- function(prior_covmtx, prior_n, update_covmtx, update_n, confidence_intervals=NULL, ci_sample_size=10000) {
   S <- prior_n*prior_covmtx
   v <- dim(S)[1]
   
@@ -23,3 +22,14 @@ update_covariance_matrix <- function(prior_covmtx, prior_n, update_covmtx, updat
   return(out)
 }
 
+update_cormatrix_data <- function(base_vols, new_vols, confidence_intervals=NULL, ci_sample_size=10000) {
+  prior_covmtx <- cov(base_vols)
+  prior_n <- dim(base_vols)[1]
+  update_covmtx <- cov(new_vols)
+  update_n <- dim(new_vols)[1]
+  
+  bayes_updated <- invwishart_updating(prior_covmtx=prior_covmtx, prior_n=prior_n, update_covmtx=update_covmtx, update_n=update_n, confidence_intervals=confidence_intervals, ci_sample_size=ci_sample_size)
+  ...
+  TODO
+  ...
+}
