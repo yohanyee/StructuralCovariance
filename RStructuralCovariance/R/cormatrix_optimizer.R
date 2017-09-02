@@ -47,7 +47,7 @@ norm_fullsum <- function(X) {
 norm_rowregression <- function(X) {
   X_reg <- construct_like_matrix(X)
   X_rsum <- rowSums(X)
-  for (i in dim(X)[2]) {
+  for (i in 1:dim(X)[2]) {
     X_reg[,i] <- residuals(lm(X[,i] ~ X_rsum))
   }
   return(X_reg)
@@ -57,7 +57,7 @@ norm_rowregression <- function(X) {
 norm_colregression <- function(X) {
   X_reg <- construct_like_matrix(X)
   X_csum <- colSums(X)
-  for (i in dim(X)[1]) {
+  for (i in 1:dim(X)[1]) {
     X_reg[i,] <- residuals(lm(X[i,] ~ X_csum))
   }
   return(X_reg)
