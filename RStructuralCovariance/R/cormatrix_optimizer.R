@@ -2,7 +2,7 @@
 # On convergence: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ (note that the proof contained within is flawed according to the 2013 paper published by the same authors)
 # The type option takes the same arguments as in norm()
 #' @export
-successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
+norm_successive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
   X[is.na(X)] <- na.set
   norm_types <- list(f="Frobenius norm", o="One norm", `1`="One norm", i="Infinity norm", m="Maximum modulus", `2`="Spectral (2)-norm")
   norm_difference <- 1
@@ -26,6 +26,41 @@ successive_norm <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
     }
   }
   return(X)
+}
+
+#' @export
+norm_rowsum <- function(X) {
+  return(X/rowSums(X))
+}
+
+#' @export
+norm_colsum <- function(X) {
+  return(X/colSums(X))
+}
+
+#' @export
+norm_fullsum <- function(X) {
+  return(X/sum(X))
+}
+
+#' @export
+norm_rowregression <- function(X) {
+  X_reg <- construct_like_matrix(X)
+  X_rsum <- rowSums(X)
+  for (i in dim(X)[2]) {
+    X_reg[,i] <- residuals(lm(X[,i] ~ X_rsum))
+  }
+  return(X_reg)
+}
+
+#' @export
+norm_colregression <- function(X) {
+  X_reg <- construct_like_matrix(X)
+  X_csum <- colSums(X)
+  for (i in dim(X)[1]) {
+    X_reg[i,] <- residuals(lm(X[i,] ~ X_csum))
+  }
+  return(X_reg)
 }
 
 # Given a named matrix, get a list of unique index (i,j) pairs to avoid recomputing symmetric elements
