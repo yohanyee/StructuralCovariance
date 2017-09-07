@@ -400,11 +400,11 @@ cormatrix_optimizer_update_terms <- function(terms, drop_rows, indexing_for_inte
     tdrop <- terms$df[dr, strucs_target]
     
     # Change source values
-    terms$source[1,] <- terms$source[1,] - sdrop
+    terms$source[1,] <- terms$source[1,] - t(sdrop)
     terms$source[2,] <- terms$source[2,] - (sdrop^2)
     
     # Change target values
-    terms$target[1,] <- terms$target[1,] - tdrop
+    terms$target[1,] <- terms$target[1,] - t(tdrop)
     terms$target[2,] <- terms$target[2,] - (tdrop^2)
     
     # Change interaction values
