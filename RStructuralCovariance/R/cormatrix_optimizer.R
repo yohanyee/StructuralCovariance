@@ -494,6 +494,21 @@ cormatrix_optimizer_passthru <- function(terms, basemtx,
 }
 
 
+cormatrix_optimizer_skipthru <- function(terms, basemtx, rows_to_drop,
+                                         indexing_for_computation=NULL, indexing_for_comparison=NULL, indexing_for_interactions=NULL) {
+  rows_to_drop <- as.character(rows_to_drop)
+  
+  # Update terms
+  newterms <- cormatrix_optimizer_update_terms(terms = terms, drop_rows = rows_to_drop, indexing_for_interactions=indexing_for_interactions)
+  
+  # Compute new correlation with basemtx and return that
+  newmtx <- cormatrix_optimizer_compute_matrix(terms = newterms, indexing_for_computation=indexing_for_computation)
+  r <- cormatrix_optimizer_correlate(newmtx, basemtx, indexing_for_comparison=indexing_for_comparison)
+  computation_info <- list(probabilistic=NA, probabilistic_weight_exponent=NA, requested_workers=NA, parallel=NA)
+  out <- list(terms=newterms, r=r, dropped_rows=rows_to_drop, computation_info=computation_info)
+  return(out)
+}
+
 # Compute batch sizes and progress
 #' @export
 batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_passes=-1) {
@@ -567,7 +582,7 @@ batch_sizer <- function(num_starting_rows, batch_definitions, min_rows=3, max_pa
 
 # Repeatedly drop rows to determine an enriched set of rows that optimize the correlation between two matrices
 #' @export
-cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, requested_workers=6, logfile="optimization.log", outfile="optimization.RData", baserowfile="optimization_base_set.txt", enrichedrowfile="optimization_enriched_set.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", timingfile="optimization.progress", is_Allen_gene=FALSE, ...) {
+cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, batch_definitions=NULL, precompute_indexing=TRUE, cor_objective=1, min_rows=3, tol=1e-6, max_passes=-1, requested_workers=6, restart_from_logfile=TRUE, logfile="optimization.log", outfile="optimization.RData", baserowfile="optimization_base_set.txt", enrichedrowfile="optimization_enriched_set.txt", rankedlistfile="optimization_ranked_list.txt", rankedtopeakfile="optimization_ranked_to_peak.txt", timingfile="optimization.progress", is_Allen_gene=FALSE, ...) {
   
   cat("\n##################\n")
   cat(paste("# INITIALIZATION #\n"))
@@ -575,6 +590,19 @@ cormatrix_optimizer_optimize <- function(X, Y, strucs_source, strucs_target, bat
   
   # Start timing
   start.time <- Sys.time()
+  will_restart <- (file.exists(logfile) & restart_from_logfile)
+  if (will_restart) {
+    cat("\n")
+    cat(paste("* Logfile detected:", logfile, "\n"))
+    cat(paste("* Restart from log set as TRUE!\n"))
+    cat(paste("* Will restart from logfile.\n"))
+    cat("\n")
+    
+    logdata <- read.csv(logfile)
+    logdata_passes <- max(logdata$pass)
+  }
+  
+  # Initial log
   cat("\n")
   cat(paste("* Initializing optimization process\n"))
   cat(paste("* Number of prunable rows:", dim(X)[1], "\n"))
