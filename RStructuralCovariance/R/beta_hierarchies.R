@@ -1,4 +1,5 @@
 # Regress out effects of whole brain volume, sex, and coil
+#' @export
 regress_out_confounds <- function(x, train_indices, scans) {
   df <- data.frame(absvol=x, study=scans$Study_Name, genotype=scans$Genotype, sex=scans$Mouse_Sex, coil=scans$Scan_Coil, background=scans$Background, wbv=vols_wbv, distcorr=scans$Distortion_Correction_File)
   
@@ -16,6 +17,7 @@ regress_out_confounds <- function(x, train_indices, scans) {
   return(x_out)
 }
 
+#' @export
 construct_raw_cormatrix_at_level <- function(tree, level, attribute="vols_reg") {
   this_level <- level
   level_strucs <- names(tree$Get(attribute = "name", filterFun = function(x) x$level == this_level))
@@ -34,6 +36,7 @@ construct_raw_cormatrix_at_level <- function(tree, level, attribute="vols_reg") 
   return(cormatrix)
 }
 
+#' @export
 construct_raw_cormatrices <- function(tree) {
   max_height <- GetAttribute(tree, "height")
   raw_level_cormatrices <- list()
@@ -44,6 +47,7 @@ construct_raw_cormatrices <- function(tree) {
   return(raw_level_cormatrices)
 }
 
+#' @export
 get_posterior_data <- function(tree, struc_i, struc_j, thres_cor=0.3, num_d=10, precision_per_level=100, p2r=p2r_table) {
   si_ancestors <- rev(names(FindNode(tree, struc_i)$Get('name', traversal = "ancestor")))
   sj_ancestors <- rev(names(FindNode(tree, struc_j)$Get('name', traversal = "ancestor")))
@@ -67,6 +71,10 @@ get_posterior_data <- function(tree, struc_i, struc_j, thres_cor=0.3, num_d=10, 
   return(list(prob=map_proba, r_initial=initial_cor, r_posterior=posterior_cor))
 }
 
+# posterior distances
+posterior_sqerr <- function()
+
+#' @export
 get_cormatrices <- function(tree, strucs=NULL, subjects=NULL, thres_cor=0.3, num_d=10, precision_per_level=100, p2r=p2r_table, ordering=NULL) {
   if (is.null(subjects)) {
     subjects <- 1:length(tree$vols_reg)
