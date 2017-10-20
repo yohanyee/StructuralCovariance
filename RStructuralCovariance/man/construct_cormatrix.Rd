@@ -32,4 +32,3 @@ an \code{RSC.cormatrix} object
 \description{
 Creates a correlation matrix by computing pairwise correlations between volumes (column vectors of a \code{data.frame})
 }
-
