@@ -7,21 +7,21 @@
 norm_successive(X, type = "F", tol = 1e-08, verbose = TRUE, na.set = 0)
 }
 \arguments{
-\item{X}{A rectangular array}
+\item{X}{A rectangular array.}
 
-\item{type}{Normalization method. This argument is passed as \code{type} to the \code{norm()}}
+\item{type}{Normalization method. This argument is passed as \code{type} to the \code{norm()}.}
 
-\item{tol}{Tolerance for convergence}
+\item{tol}{Tolerance for convergence.}
 
-\item{verbose}{Be verbose}
+\item{verbose}{Be verbose .}
 
-\item{na.set}{\code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value}
+\item{na.set}{\code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value.}
 }
 \value{
-Normalized array
+Normalized array.
 }
 \description{
 A method of successively normalizing both rows and columns of a matrix, a la Brad Efron and further described by Olshen et al.
-See for more details: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ 
-Note that the proof on convergence contained within aforementioned is flawed according to the 2013 paper published by the same authors
+See for more details: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ . 
+Note that the proof on convergence contained within aforementioned is flawed according to the 2013 paper published by the same authors.
 }

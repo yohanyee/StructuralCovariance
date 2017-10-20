@@ -1,15 +1,15 @@
 #' Successive normalization of rectangular array
 #' 
 #' A method of successively normalizing both rows and columns of a matrix, a la Brad Efron and further described by Olshen et al.
-#' See for more details: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ 
-#' Note that the proof on convergence contained within aforementioned is flawed according to the 2013 paper published by the same authors
+#' See for more details: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2868388/ . 
+#' Note that the proof on convergence contained within aforementioned is flawed according to the 2013 paper published by the same authors.
 #' 
-#' @param X A rectangular array
-#' @param type Normalization method. This argument is passed as \code{type} to the \code{norm()}
-#' @param tol Tolerance for convergence
-#' @param verbose Be verbose 
-#' @param na.set \code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value
-#' @return Normalized array
+#' @param X A rectangular array.
+#' @param type Normalization method. This argument is passed as \code{type} to the \code{norm()}.
+#' @param tol Tolerance for convergence.
+#' @param verbose Be verbose .
+#' @param na.set \code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value.
+#' @return Normalized array.
 #' 
 #' @export
 norm_successive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
@@ -38,23 +38,53 @@ norm_successive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
   return(X)
 }
 
-# Normalize 
+#' Row sum normalization of rectangular array
+#' 
+#' Normalize a rectangular array by dividing each element by the sum of its row. 
+#' This ensures that each row sum is 1. 
+#' 
+#' @param X A rectangular array.
+#' @return Normalized array with rows that sum to 1.
+#' 
 #' @export
 norm_rowsum <- function(X) {
   return(X/rowSums(X))
 }
 
-# Normalize 
+#' Column sum normalization of rectangular array
+#' 
+#' Normalize a rectangular array by dividing each element by the sum of its column. 
+#' This ensures that each column sum is 1. 
+#' 
+#' @param X A rectangular array.
+#' @return Normalized array with columns that sum to 1.
+#' 
 #' @export
 norm_colsum <- function(X) {
   return(X/colSums(X))
 }
 
+#' Total sum normalization of rectangular array
+#' 
+#' Normalize a rectangular array by dividing each element by the sum of all elements. 
+#' 
+#' @param X A rectangular array.
+#' @return Normalized array with all elements summing to 1.
+#' 
 #' @export
 norm_fullsum <- function(X) {
   return(X/sum(X))
 }
 
+#' Row sum regression of rectangular array
+#' 
+#' Regress out the row sums from elements in a rectangular array. 
+#' Specifically, each column is replaced by residuals of the linear model that predicts column values by sums of rows.
+#' This is similar to dividing by row sums (i.e. \code{norm_rowsum()}) but also takes the differences in slopes (w.r.t. to the row sums) of each column into account.
+#' 
+#' @param X A rectangular array.
+#' @return Normalized array of regression residuals.
+#' 
 #' @export
 norm_rowregression <- function(X) {
   X_reg <- construct_like_matrix(X)
@@ -65,6 +95,15 @@ norm_rowregression <- function(X) {
   return(X_reg)
 }
 
+#' Column sum regression of rectangular array
+#' 
+#' Regress out the column sums from elements in a rectangular array. 
+#' Specifically, each row is replaced by residuals of the linear model that predicts row values by sums of columns.
+#' This is similar to dividing by column sums (i.e. \code{norm_colsum()}) but also takes the differences in slopes (w.r.t. to the column sums) of each row into account.
+#' 
+#' @param X A rectangular array.
+#' @return Normalized array of regression residuals.
+#' 
 #' @export
 norm_colregression <- function(X) {
   X_reg <- construct_like_matrix(X)
@@ -73,4 +112,67 @@ norm_colregression <- function(X) {
     X_reg[i,] <- residuals(lm(X[i,] ~ X_csum))
   }
   return(X_reg)
+}
+
+#' Normalization of rectangular array by model fitting
+#' 
+#' Fit a model with provided predictors and extract residuals.
+#' 
+#' @param X A rectangular array, or a vector. If a rectangular array is provided, then the model will be applied to each column separately.
+#' @param formula a formula describing the model to be fitted, with response variable omitted. If response variable is present, it will be dropped and the appropriate data from \code{X} will be used.
+#' @param df data frame with same number of rows as \code{X}, containing the predictors.
+#' @param train_indices an optional set of indices corresponding to the rows of \code{X} indicating the data on which the model should be fit. The same model will be then be applied to the remaining indices. If \code{NULL}, then all rows are used in the model.
+#' @return Normalized array or vector of regression residuals.
+#' 
+#' @export
+norm_by_model <- function(X, formula, df, train_indices=NULL) {
+  if (is.vector(X)) {
+    return(residuals_from_model(X, formula = formula, df=df, train_indices = train_indices))
+  } else {
+    return(apply(X = X, MARGIN = 2, FUN=residuals_from_model, formula=formula, df=df, train_indices=train_indices))
+  }
+}
+
+# Helper functions ---- 
+
+residuals_from_model <- function(x, formula, df, train_indices=NULL) {
+  
+  # Check that dimensions match
+  if (dim(df)[1] != length(x)) {
+    stop("df must have same number of observations as length of x")
+  }
+  
+  # Check train_indices valid and set test_indices
+  all_indices <- 1:length(x)
+  if (is.null(train_indices)) {
+    train_indices <- all_indices
+  }
+  if (!all(train_indices %in% all_indices)) {
+    stop("train_indices are not valid indices")
+  }
+  test_indices <- setdiff(all_indices, train_indices)
+  
+  # Initialize
+  if ("RESPONSE_VECTOR_X" %in% colnames(df)) {
+    stop("df contains a column with name RESPONSE_VECTOR_X, that conflicts with this code")
+  }
+  df[["RESPONSE_VECTOR_X"]] <- x
+  x_train <- x[train_indices]
+  df_train <- df[train_indices,]
+  df_test <- df[test_indices,]
+  
+  # Fit model
+  model_formula <- reformulate(attr(terms(formula), "term.labels"), response="RESPONSE_VECTOR_X")
+  model_train <- lm(formula = model_formula, data = df_train )
+  
+  # Extract residuals
+  residuals_train <- df_train$RESPONSE_VECTOR_X - predict(model_train, newdata=df_train)
+  residuals_test <- df_test$RESPONSE_VECTOR_X - predict(model_train, newdata=df_test)
+  
+  # Output
+  x_out <- numeric(length(x))
+  x_out[train_indices] <- residuals_train
+  x_out[test_indices] <- residuals_test
+  
+  return(x_out)
 }
