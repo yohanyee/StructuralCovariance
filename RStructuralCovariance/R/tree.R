@@ -74,13 +74,13 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="c
     
     # Set up text progress bar
     if (verbose) {
-      cat("Computing association matrix.\n")
+      cat("Adding normalized volumes to nodes.\n")
       pb <- txtProgressBar(max=hanat_tree$totalCount, style=3)
       prog <- 1
     }
     
     hanat_tree$Do(function(x) {
-      x$normVolume <- normAnatMatrix[,x$name]
+      x$normVolumes <- normAnatMatrix[,x$name]
       if (verbose) {
         setTxtProgressBar(pb, prog)
         prog <- prog + 1
@@ -89,7 +89,7 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="c
     )
     
     hanat_tree$Do(function(x) {
-      x$normVolume <- do.call(norm.function, args = list(X=x, ...))
+      x$normVolumes <- do.call(norm.function, args = list(X=x$volumes, ...))
       if (verbose) {
         setTxtProgressBar(pb, prog)
         prog <- prog + 1
