@@ -7,8 +7,10 @@ Authors@R: person("Yohan", "Yee", role = c("aut", "cre"), email = "yohan.yee@sic
 Description: R code to analyze covariance patterns in brain structural
     properties. Currently being developed with a focus on mouse MRI volumetric data.
     This code is meant to build upon existing tools being used at the Mouse Imaging
-    Centre in Toronto.
+    Centre in Toronto, namely the RMINC package.
 Imports:
+  RMINC,
+  MASS,
   stats,
   corrplot,
   ggplot2,

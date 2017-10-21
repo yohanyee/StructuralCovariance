@@ -1,79 +1,27 @@
-library(MASS)
-
-# Helper function to update beta distribution parameters
-update_beta <- function(a, b, successes, failures) {
-  a_new <- a + successes
-  b_new <- b + failures
-  out <- c(a_new, b_new)
-  names(out) <- c("a", "b")
-  return(out)
-}
-
-# Helper function to sample correlation coefficients given a population correlation
-sample_from_cor <- function(rho, d=10, samples=100) {
-  return(replicate(n=samples, cor(mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
-}
-
-# Modeling the probability that for a given population correlation rho (d data points), the sample correlation lies above the threshold
-# This function determines the beta parameters for that model
-fit_beta <- function(rho, threshold, precision_cor=10, precision_sampling=100) {
-  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
-  a <- length(which(cor_dist > threshold))
-  b <- precision_sampling - a
-  out <- c(a, b)
-  names(out) <- c("a", "b")
-  return(out)
-}
-
-# Update the beta parameters given a new measured correlation
-update_beta_prior <- function(a, b, rho, threshold, precision_cor=10, precision_sampling=100) {
-  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
-  successes <- length(which(cor_dist > threshold))
-  failures <- precision_sampling - successes
-  new_params <- update_beta(a=a, b=b, successes=successes, failures=failures)
-  return(new_params)
-}
-
-# Transform probability of connection above threshold, to a correlation coefficient
-# THIS IS WHAT SHOULD BE DONE
-beta_to_rho <- function(a, b, p2r.table, precision_sampling=1000, retval="median") {
-  probability_values <- rbeta(precision_sampling, a, b)
-  rho_values <- numeric(precision_sampling)
-  for (i in 1:precision_sampling) {
-    probability <- probability_values[i]
-    rho_values[i] <- p2r.table$rho[which.min(abs(p2r.table$prob - probability))]
-  }
-  if (retval=="distribution") {
-    return(rho_values)
-  } else {
-    return(do.call(retval, list(x=rho_values)))
-  }
-}
-
-# Given threshold rho, generate a transformation table mapping probability of being above threshold to correlation coefficient
-# Is this just tan(prob) / arctanh(prob), with a scaling factor to account for num_samples??
-# TODO: this can be parallelized
-probability_to_rho_table <- function(threshold=0., stepsize=0.01, precision_cor=10, precision_sampling=10000, show_progress=TRUE) {
-  rhos <- seq(from=-1, to=1, by=stepsize)
-  num_rows <- length(rhos)
-  p2r.table <- data.frame(rho=numeric(num_rows), prob=numeric(num_rows))
-  if (show_progress) {
-    pb <- txtProgressBar(min=0, max=num_rows, style = 3)
-  }
-  for (i in 1:length(rhos)) {
-    rho <- rhos[i]
-    probability <- length(which(sample_from_cor(rho, d = precision_cor, samples=precision_sampling) > threshold))/precision_sampling
-    p2r.table$rho[i] <- rho
-    p2r.table$prob[i] <- probability
-    if (show_progress) {
-      setTxtProgressBar(pb, i)
-    }
-  }
-  return(p2r.table)
-}
-
 # TODO: test on two structures that share the same parent
-posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table=NULL, thres_cor=0., precision_cor=10, precision_sampling=100, volattr="normVolumes") {
+#' Correlation coefficient inference via Bayesian updating on hierarchical anatomy
+#' 
+#' Correlation matrices constructed from small samples (e.g. n=10) drawn from the same population are generally not very robust, in the sense that across multiple draws, each correlation coefficient varies quite a bit.
+#' This is a statistical issue: the distribution of correlation coefficients, when sampling from a population with known correlation, is very wide when the sample size is small. 
+#' For example, when sampling the correlation from 10 observations repeatedly drawn from a population correlation of 0.5, the 95% of the distribution p(r) lies between -0.15 and 0.86. 
+#' When the number of observations increases to 100, the interval becomes much narrower, around 0.33 to 0.63. 
+#' Typically biological studies are not fortunate to have sample sizes that large. Brain structures are constrained in their correlation patterns however (e.g. two structures that develop from a parent structure are both likely to have similar correlations in volumes to the parent structure); 
+#' and exploiting such constraints might provide better estimates of correlations between structural properties than the raw sample correlation coefficient.
+#' This function uses a Bayesian framework and exploits the hierarchical structure of anatomy in order to better estimate the correlation coefficient between two given structures. 
+#' Briefly, the probability that the correlation between two structures is greater than a threshold value is inferred by recursively computing correlations between their parent structures, and updating this probability (modeled as a beta distribution).
+#' Optionally, a mapping from probability to correlation can be also specified to convert the final probability to a posterior correlation.
+#' 
+#' @param hanat Hierarchical anatomy tree giving relationship between structures and their parents.
+#' @param struc_i Structure name (must be contained as \code{name} attribute in some node of \code{hanat}).
+#' @param struc_j Structure name (must be contained as \code{name} attribute in some node of \code{hanat}).
+#' @param indices Optional set of indices that indicate which volumes/observations to use in computing the posterior data. This is useful if you store all volumes across different experimental groups in the tree, and want to separately compute the posterior data in different groups.
+#' @param p2r.table Optional table (output of \code{probability_to_rho_table()}) that maps probabilities to correlations. Provide this is you want a posterior correlation estimate.
+#' @param thres_cor Threshold correlation from which to calculate the probability. Default is 0.
+#' @param precision_cor Optional parameter to tune the width of the distribution of the correlation coefficient p(r). By default this is equal to the number of indices (if provided) or volumes/observations (if indices are not provided).
+#' @param precision_sampling Optional parameter to tune the quality of the estimated distributions, which are calculated by sampling a number of times given by this parameter.
+#' @param volattr Attribute name in the anatomy tree \code{hanat} that contains the volume data from which correlations are computed.
+#' @return a list of posterior data including the probability that the posterior correlation is above the input threshold, and (if \code{p2r.table} is provided), a posterior correlation.
+posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table=NULL, thres_cor=0., precision_cor=NULL, precision_sampling=100, volattr="normVolumes") {
   
   # Check that structures are different
   if (struc_i==struc_j) {
@@ -87,6 +35,11 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table
   }
   if (!all(indices %in% all.indices)) {
     stop("indices are not valid")
+  }
+  
+  # Set precision_cor if NULL
+  if (is.null(precision_cor)) {
+    precision_cor <- length(indices)
   }
   
   # Get list of ancestors for each input structure
@@ -157,3 +110,80 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table
   }
   return(out)
 }
+
+
+# Helper functions for updating the beta distribution parameters ----
+
+# Modeling the probability that for a given population correlation rho (d data points), the sample correlation lies above the threshold
+# This function determines the beta parameters for that model
+fit_beta <- function(rho, threshold, precision_cor=10, precision_sampling=100) {
+  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
+  a <- length(which(cor_dist > threshold))
+  b <- precision_sampling - a
+  out <- c(a, b)
+  names(out) <- c("a", "b")
+  return(out)
+}
+
+# Helper function to update beta distribution parameters
+update_beta <- function(a, b, successes, failures) {
+  a_new <- a + successes
+  b_new <- b + failures
+  out <- c(a_new, b_new)
+  names(out) <- c("a", "b")
+  return(out)
+}
+
+# Helper functions for working with the beta distribution in the context of correlations ----
+
+# Helper function to sample correlation coefficients given a population correlation
+sample_from_cor <- function(rho, d=10, samples=100) {
+  return(replicate(n=samples, cor(mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
+}
+
+# Update the beta parameters given a new measured correlation
+update_beta_prior <- function(a, b, rho, threshold, precision_cor=10, precision_sampling=100) {
+  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
+  successes <- length(which(cor_dist > threshold))
+  failures <- precision_sampling - successes
+  new_params <- update_beta(a=a, b=b, successes=successes, failures=failures)
+  return(new_params)
+}
+
+# Transform probability of connection above threshold, to a correlation coefficient
+beta_to_rho <- function(a, b, p2r.table, precision_sampling=1000, retval="median") {
+  probability_values <- rbeta(precision_sampling, a, b)
+  rho_values <- numeric(precision_sampling)
+  for (i in 1:precision_sampling) {
+    probability <- probability_values[i]
+    rho_values[i] <- p2r.table$rho[which.min(abs(p2r.table$prob - probability))]
+  }
+  if (retval=="distribution") {
+    return(rho_values)
+  } else {
+    return(do.call(retval, list(x=rho_values)))
+  }
+}
+
+# Given threshold rho, generate a transformation table mapping probability of being above threshold to correlation coefficient
+# Is this just tan(prob) / arctanh(prob), with a scaling factor to account for num_samples??
+# TODO: this can be parallelized
+probability_to_rho_table <- function(threshold=0., stepsize=0.01, precision_cor=10, precision_sampling=10000, show_progress=TRUE) {
+  rhos <- seq(from=-1, to=1, by=stepsize)
+  num_rows <- length(rhos)
+  p2r.table <- data.frame(rho=numeric(num_rows), prob=numeric(num_rows))
+  if (show_progress) {
+    pb <- txtProgressBar(min=0, max=num_rows, style = 3)
+  }
+  for (i in 1:length(rhos)) {
+    rho <- rhos[i]
+    probability <- length(which(sample_from_cor(rho, d = precision_cor, samples=precision_sampling) > threshold))/precision_sampling
+    p2r.table$rho[i] <- rho
+    p2r.table$prob[i] <- probability
+    if (show_progress) {
+      setTxtProgressBar(pb, i)
+    }
+  }
+  return(p2r.table)
+}
+
