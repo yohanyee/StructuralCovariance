@@ -1,10 +1,14 @@
 # TODO: test on two structures that share the same parent
 #' Correlation coefficient inference via Bayesian updating on hierarchical anatomy
 #' 
-#' Correlation matrices constructed from small samples (e.g. n=10) drawn from the same population are generally not very robust, in the sense that across multiple draws, each correlation coefficient varies quite a bit.
+#' @description Function that computes the posterior probability that the correlation between two structures' properties are greater than some threshold, and optionally a posterior correlation coefficient itself, given a tree structure of anatomy. 
+#' See the details section below for more information.
+#' 
+#' @details Correlation matrices constructed from small samples (e.g. n=10) drawn from the same population are generally not very robust, in the sense that across multiple draws, each correlation coefficient varies quite a bit.
 #' This is a statistical issue: the distribution of correlation coefficients, when sampling from a population with known correlation, is very wide when the sample size is small. 
-#' For example, when sampling the correlation from 10 observations repeatedly drawn from a population correlation of 0.5, the 95% of the distribution p(r) lies between -0.15 and 0.86. 
+#' For example, when sampling the correlation from 10 observations repeatedly drawn from a population correlation of 0.5, 95\% of the distribution p(r) lies between -0.15 and 0.86. 
 #' When the number of observations increases to 100, the interval becomes much narrower, around 0.33 to 0.63. 
+#' 
 #' Typically biological studies are not fortunate to have sample sizes that large. Brain structures are constrained in their correlation patterns however (e.g. two structures that develop from a parent structure are both likely to have similar correlations in volumes to the parent structure); 
 #' and exploiting such constraints might provide better estimates of correlations between structural properties than the raw sample correlation coefficient.
 #' This function uses a Bayesian framework and exploits the hierarchical structure of anatomy in order to better estimate the correlation coefficient between two given structures. 
