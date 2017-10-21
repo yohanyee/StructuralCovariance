@@ -8,22 +8,22 @@ update_beta <- function(a, b, successes, failures) {
 }
 
 # Helper function to sample correlation coefficients given a population correlation
-sample_from_cor <- function(rho, d=10, size=100) {
-  return(replicate(n=size, cor(mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
+sample_from_cor <- function(rho, d=10, samples=100) {
+  return(replicate(n=samples, cor(mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
 }
 
 # Modeling the probability that for a given population correlation rho (d data points), the sample correlation lies above the threshold
 # This function determines the beta parameters for that model
-fit_beta <- function(rho, threshold, num_samples=10, precision=100) {
-  cor_dist <- sample_from_cor(rho=rho, d=num_samples, size=precision)
+fit_beta <- function(rho, threshold, precision_cor=10, precision_sampling=100) {
+  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
   a <- length(which(cor_dist > threshold))
-  b <- precision - a
+  b <- precision_sampling - a
   return(c(a, b))
 }
 
 # Update the beta parameters given a new measured correlation
-update_beta_prior <- function(a, b, rho, threshold, num_samples=10, precision=100) {
-  cor_dist <- sample_from_cor(rho=rho, d=num_samples, size=precision)
+update_beta_prior <- function(a, b, rho, threshold, precision_cor=10, precision_sampling=100) {
+  cor_dist <- sample_from_cor(rho=rho, d=precision_cor, samples=precision_sampling)
   successes <- length(which(cor_dist > threshold))
   failures <- precision - successes
   new_params <- update_beta(a=a, b=b, successes=successes, failures=failures)
@@ -55,12 +55,12 @@ probability_to_rho_table <- function(threshold, stepsize=0.01, num_samples=10, p
 
 # Transform probability of connection above threshold, to a correlation coefficient
 # THIS IS WHAT SHOULD BE DONE
-beta_to_rho <- function(a, b, p2r_table, precision=100, retval="median") {
-  probability_values <- rbeta(precision, a, b)
-  rho_values <- numeric(precision)
+beta_to_rho <- function(a, b, p2r.table, precision_sampling=1000, retval="median") {
+  probability_values <- rbeta(precision_sampling, a, b)
+  rho_values <- numeric(precision_sampling)
   for (i in 1:precision) {
     probability <- probability_values[i]
-    rho_values[i] <- p2r_table$rho[which.min(abs(p2r_table$prob - probability))]
+    rho_values[i] <- p2r.table$rho[which.min(abs(p2r.table$prob - probability))]
   }
   if (retval=="distribution") {
     return(rho_values)
