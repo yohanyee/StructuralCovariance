@@ -25,6 +25,8 @@
 #' @param precision_sampling Optional parameter to tune the quality of the estimated distributions, which are calculated by sampling a number of times given by this parameter.
 #' @param volattr Attribute name in the anatomy tree \code{hanat} that contains the volume data from which correlations are computed.
 #' @return a list of posterior data including the probability that the posterior correlation is above the input threshold, and (if \code{p2r.table} is provided), a posterior correlation.
+#' 
+#' @export
 posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table=NULL, thres_cor=0., precision_cor=NULL, precision_sampling=100, volattr="normVolumes") {
   
   # Check that structures are different
@@ -142,7 +144,7 @@ update_beta <- function(a, b, successes, failures) {
 
 # Helper function to sample correlation coefficients given a population correlation
 sample_from_cor <- function(rho, d=10, samples=100) {
-  return(replicate(n=samples, cor(mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
+  return(replicate(n=samples, cor(MASS::mvrnorm(d, mu = c(0,0), Sigma = matrix(c(1,rho,rho,1), ncol = 2), empirical = FALSE))[2,1]))
 }
 
 # Update the beta parameters given a new measured correlation
