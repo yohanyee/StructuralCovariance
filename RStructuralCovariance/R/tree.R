@@ -1,5 +1,20 @@
 library(data.tree)
 
+#' Construct and populate an anatomical hierarchy from volume data
+#' 
+#' Given volume data as a rectangular array, construct an anatomical hierarchy by grouping structures that share volume patterns.
+#' More specifically, a pairwise association matrix is constructed for each pair of structures, where the association is defined as the minimum of the correlation between each of the two structures and the sum of both structures.
+#' In other words, structures are grouped in a way that parent structures (with volume the sum of its children) correlate the most with its children structure. 
+#' The association matrix is then hierarchically clustered, and a data.tree is constructed from the resulting dendrogram. 
+#' Volumes can (and should) be normalized when computing associations.
+#'  
+#' @param anatMatrix A rectangular array of volume data, with structure names as column names.
+#' @param norm.function A function to normalize the volume data.
+#' @param hclust.method Method to be passed to \code{hclust()}.
+#' @param verbose Be verbose.
+#' @param ... Further arguments to be passed to the function given by \code{norm.function}.
+#' @return An anatomical hierarchy with volume attributes (\code{volumes}, \code{meanVolume}, and if applicable, \code{normVolumes})
+#' 
 #' @export
 hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="complete", verbose=TRUE, ...) {
   # Set up constants and association matrix
@@ -102,6 +117,18 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="c
       cat("Done.\n")
     }
   }
+  
+  # Name all nodes with (somewhat) more meaningful names
+  hanat_tree$Do(function(x) {
+    child_name <- names(which.max(lapply(x$children, "[[", "meanVolume")))
+    if (startsWith(child_name, "Level ")) {
+      new_name <- gsub(paste0("Level ", x$level + 1, ": "), paste0("Level ", x$level, ": "), child_name)
+    } else {
+      new_name <- paste0("Level ", x$level, ": ", child_name)
+    }
+    x$name <- new_name
+  }, filterFun = isNotLeaf, traversal = "post-order"
+  )
   
   return(hanat_tree)
 }

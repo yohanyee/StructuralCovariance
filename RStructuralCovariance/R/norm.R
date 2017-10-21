@@ -7,7 +7,7 @@
 #' @param X A rectangular array.
 #' @param type Normalization method. This argument is passed as \code{type} to the \code{norm()}.
 #' @param tol Tolerance for convergence.
-#' @param verbose Be verbose .
+#' @param verbose Be verbose.
 #' @param na.set \code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value.
 #' @return Normalized array.
 #' 

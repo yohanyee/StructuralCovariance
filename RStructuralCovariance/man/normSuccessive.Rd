@@ -13,7 +13,7 @@ normSuccessive(X, type = "F", tol = 1e-08, verbose = TRUE, na.set = 0)
 
 \item{tol}{Tolerance for convergence.}
 
-\item{verbose}{Be verbose .}
+\item{verbose}{Be verbose.}
 
 \item{na.set}{\code{norm()} requires that no elements in the rectangular array be \code{NA}. Replace \code{NA}s with this value.}
 }
