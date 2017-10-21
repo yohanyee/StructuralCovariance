@@ -1,5 +1,7 @@
 library(data.tree)
 
+
+# TODO: check that train.indices outputs same hierarchy as subsetting data
 #' Construct and populate an anatomical hierarchy from volume data
 #' 
 #' Given volume data as a rectangular array, construct an anatomical hierarchy by grouping structures that share volume patterns.
@@ -27,7 +29,7 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, train.indices=NU
     train.indices <- all.indices
   }
   if (!all(train.indices %in% all.indices)) {
-    stop("train_indices are not valid indices")
+    stop("train.indices are not valid indices")
   }
   
   # Pre-normalize volumes if required

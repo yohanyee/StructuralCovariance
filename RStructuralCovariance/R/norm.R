@@ -148,7 +148,7 @@ residuals_from_model <- function(x, formula, df, train.indices=NULL) {
     train.indices <- all.indices
   }
   if (!all(train.indices %in% all.indices)) {
-    stop("train_indices are not valid indices")
+    stop("train.indices are not valid indices")
   }
   test.indices <- setdiff(all.indices, train.indices)
   
