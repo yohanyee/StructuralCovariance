@@ -12,7 +12,7 @@
 #' @return Normalized array.
 #' 
 #' @export
-norm_successive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
+normSuccessive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
   X[is.na(X)] <- na.set
   norm_types <- list(f="Frobenius norm", o="One norm", `1`="One norm", i="Infinity norm", m="Maximum modulus", `2`="Spectral (2)-norm")
   norm_difference <- 1
@@ -47,7 +47,7 @@ norm_successive <- function(X, type="F", tol=1e-8, verbose=TRUE, na.set=0) {
 #' @return Normalized array with rows that sum to 1.
 #' 
 #' @export
-norm_rowsum <- function(X) {
+normRowSum <- function(X) {
   return(X/rowSums(X))
 }
 
@@ -60,7 +60,7 @@ norm_rowsum <- function(X) {
 #' @return Normalized array with columns that sum to 1.
 #' 
 #' @export
-norm_colsum <- function(X) {
+normColSum <- function(X) {
   return(X/colSums(X))
 }
 
@@ -72,7 +72,7 @@ norm_colsum <- function(X) {
 #' @return Normalized array with all elements summing to 1.
 #' 
 #' @export
-norm_fullsum <- function(X) {
+normFullSum <- function(X) {
   return(X/sum(X))
 }
 
@@ -86,7 +86,7 @@ norm_fullsum <- function(X) {
 #' @return Normalized array of regression residuals.
 #' 
 #' @export
-norm_rowregression <- function(X) {
+normRowRegression <- function(X) {
   X_reg <- construct_like_matrix(X)
   X_rsum <- rowSums(X)
   for (i in 1:dim(X)[2]) {
@@ -105,7 +105,7 @@ norm_rowregression <- function(X) {
 #' @return Normalized array of regression residuals.
 #' 
 #' @export
-norm_colregression <- function(X) {
+normColRegression <- function(X) {
   X_reg <- construct_like_matrix(X)
   X_csum <- colSums(X)
   for (i in 1:dim(X)[1]) {
@@ -125,7 +125,7 @@ norm_colregression <- function(X) {
 #' @return Normalized array or vector of regression residuals.
 #' 
 #' @export
-norm_by_model <- function(X, formula, df, train_indices=NULL) {
+normByModel <- function(X, formula, df, train_indices=NULL) {
   if (is.vector(X)) {
     return(residuals_from_model(X, formula = formula, df=df, train_indices = train_indices))
   } else {
