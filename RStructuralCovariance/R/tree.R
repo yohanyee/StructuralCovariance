@@ -22,6 +22,7 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, train.indices=NU
   num_strucs <- dim(anatMatrix)[2]
   assoc_mtx <- matrix(nrow=num_strucs, ncol=num_strucs, dimnames = list(colnames(anatMatrix), colnames(anatMatrix)))
   diag(assoc_mtx) <- 1
+  all.indices <- 1:dim(anatMatrix)[1]
   if (is.null(train.indices)) {
     train.indices <- all.indices
   }
