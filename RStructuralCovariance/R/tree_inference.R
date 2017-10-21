@@ -102,6 +102,7 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table
   out <- list()
   out$r_measured_raw <- cor(GetAttribute(FindNode(hanat, struc_i), volattr)[indices], GetAttribute(FindNode(hanat, struc_j), volattr)[indices])
   out$r_measured_bootstrapped <- measured_cor
+  out$prior_proba <- (init_params[1] - 1) / (init_params[1] + init_params[2] - 2)
   out$posterior_proba <- (updated_params[1] - 1) / (updated_params[1] + updated_params[2] - 2)
   out$posterior_params <- updated_params
   out$update_cors_list <- update_cors_list
