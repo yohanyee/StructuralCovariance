@@ -4,13 +4,15 @@
 \alias{hanatFromAnatMatrix}
 \title{Construct and populate an anatomical hierarchy from volume data}
 \usage{
-hanatFromAnatMatrix(anatMatrix, norm.function = NULL,
+hanatFromAnatMatrix(anatMatrix, norm.function = NULL, train.indices = NULL,
   hclust.method = "complete", verbose = TRUE, ...)
 }
 \arguments{
 \item{anatMatrix}{A rectangular array of volume data, with structure names as column names.}
 
 \item{norm.function}{A function to normalize the volume data.}
+
+\item{train.indices}{an optional set of indices corresponding to the rows of \code{anatMatrix} indicating the data on which 1) the anatomical hierarchy will be determined, and 2) if \code{norm.function} is set to \code{normByModel}, the data that should be used in the model fitting. If \code{NULL}, then all rows are used in the hierarchy construction.}
 
 \item{hclust.method}{Method to be passed to \code{hclust()}.}
 

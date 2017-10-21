@@ -4,7 +4,7 @@
 \alias{normByModel}
 \title{Normalization of rectangular array by model fitting}
 \usage{
-normByModel(X, formula, df, train_indices = NULL)
+normByModel(X, formula, df, train.indices = NULL)
 }
 \arguments{
 \item{X}{A rectangular array, or a vector. If a rectangular array is provided, then the model will be applied to each column separately.}
@@ -13,7 +13,7 @@ normByModel(X, formula, df, train_indices = NULL)
 
 \item{df}{data frame with same number of rows as \code{X}, containing the predictors.}
 
-\item{train_indices}{an optional set of indices corresponding to the rows of \code{X} indicating the data on which the model should be fit. The same model will be then be applied to the remaining indices. If \code{NULL}, then all rows are used in the model.}
+\item{train.indices}{an optional set of indices corresponding to the rows of \code{X} indicating the data on which the model should be fit. The same model will be then be applied to the remaining indices. If \code{NULL}, then all rows are used in the model.}
 }
 \value{
 Normalized array or vector of regression residuals.

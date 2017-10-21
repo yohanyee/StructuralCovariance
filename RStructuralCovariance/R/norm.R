@@ -121,21 +121,21 @@ normColRegression <- function(X) {
 #' @param X A rectangular array, or a vector. If a rectangular array is provided, then the model will be applied to each column separately.
 #' @param formula a formula describing the model to be fitted, with response variable omitted. If response variable is present, it will be dropped and the appropriate data from \code{X} will be used.
 #' @param df data frame with same number of rows as \code{X}, containing the predictors.
-#' @param train_indices an optional set of indices corresponding to the rows of \code{X} indicating the data on which the model should be fit. The same model will be then be applied to the remaining indices. If \code{NULL}, then all rows are used in the model.
+#' @param train.indices an optional set of indices corresponding to the rows of \code{X} indicating the data on which the model should be fit. The same model will be then be applied to the remaining indices. If \code{NULL}, then all rows are used in the model.
 #' @return Normalized array or vector of regression residuals.
 #' 
 #' @export
-normByModel <- function(X, formula, df, train_indices=NULL) {
+normByModel <- function(X, formula, df, train.indices=NULL) {
   if (is.vector(X)) {
-    return(residuals_from_model(X, formula = formula, df=df, train_indices = train_indices))
+    return(residuals_from_model(X, formula = formula, df=df, train.indices = train.indices))
   } else {
-    return(apply(X = X, MARGIN = 2, FUN=residuals_from_model, formula=formula, df=df, train_indices=train_indices))
+    return(apply(X = X, MARGIN = 2, FUN=residuals_from_model, formula=formula, df=df, train.indices=train.indices))
   }
 }
 
 # Helper functions ---- 
 
-residuals_from_model <- function(x, formula, df, train_indices=NULL) {
+residuals_from_model <- function(x, formula, df, train.indices=NULL) {
   
   # Check that dimensions match
   if (dim(df)[1] != length(x)) {
@@ -143,23 +143,23 @@ residuals_from_model <- function(x, formula, df, train_indices=NULL) {
   }
   
   # Check train_indices valid and set test_indices
-  all_indices <- 1:length(x)
-  if (is.null(train_indices)) {
-    train_indices <- all_indices
+  all.indices <- 1:length(x)
+  if (is.null(train.indices)) {
+    train.indices <- all.indices
   }
-  if (!all(train_indices %in% all_indices)) {
+  if (!all(train.indices %in% all.indices)) {
     stop("train_indices are not valid indices")
   }
-  test_indices <- setdiff(all_indices, train_indices)
+  test.indices <- setdiff(all.indices, train.indices)
   
   # Initialize
   if ("RESPONSE_VECTOR_X" %in% colnames(df)) {
     stop("df contains a column with name RESPONSE_VECTOR_X, that conflicts with this code")
   }
   df[["RESPONSE_VECTOR_X"]] <- x
-  x_train <- x[train_indices]
-  df_train <- df[train_indices,]
-  df_test <- df[test_indices,]
+  x_train <- x[train.indices]
+  df_train <- df[train.indices,]
+  df_test <- df[test.indices,]
   
   # Fit model
   model_formula <- reformulate(attr(terms(formula), "term.labels"), response="RESPONSE_VECTOR_X")
@@ -171,8 +171,8 @@ residuals_from_model <- function(x, formula, df, train_indices=NULL) {
   
   # Output
   x_out <- numeric(length(x))
-  x_out[train_indices] <- residuals_train
-  x_out[test_indices] <- residuals_test
+  x_out[train.indices] <- residuals_train
+  x_out[test.indices] <- residuals_test
   
   return(x_out)
 }

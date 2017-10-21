@@ -10,23 +10,35 @@ library(data.tree)
 #'  
 #' @param anatMatrix A rectangular array of volume data, with structure names as column names.
 #' @param norm.function A function to normalize the volume data.
+#' @param train.indices an optional set of indices corresponding to the rows of \code{anatMatrix} indicating the data on which 1) the anatomical hierarchy will be determined, and 2) if \code{norm.function} is set to \code{normByModel}, the data that should be used in the model fitting. If \code{NULL}, then all rows are used in the hierarchy construction.
 #' @param hclust.method Method to be passed to \code{hclust()}.
 #' @param verbose Be verbose.
 #' @param ... Further arguments to be passed to the function given by \code{norm.function}.
 #' @return An anatomical hierarchy with volume attributes (\code{volumes}, \code{meanVolume}, and if applicable, \code{normVolumes})
 #' 
 #' @export
-hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="complete", verbose=TRUE, ...) {
+hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, train.indices=NULL, hclust.method="complete", verbose=TRUE, ...) {
   # Set up constants and association matrix
   num_strucs <- dim(anatMatrix)[2]
   assoc_mtx <- matrix(nrow=num_strucs, ncol=num_strucs, dimnames = list(colnames(anatMatrix), colnames(anatMatrix)))
   diag(assoc_mtx) <- 1
+  if (is.null(train.indices)) {
+    train.indices <- all.indices
+  }
+  if (!all(train.indices %in% all.indices)) {
+    stop("train_indices are not valid indices")
+  }
   
   # Pre-normalize volumes if required
   if (is.null(norm.function)) {
     normAnatMatrix <- anatMatrix
   } else {
-    normAnatMatrix <- do.call(norm.function, args = list(X=anatMatrix, ...))
+    if (quote(norm.function)=="normByModel") {
+      normAnatMatrix <- do.call(norm.function, args = list(X=anatMatrix, train.indices=train.indices, ...))
+    } else {
+      normAnatMatrix <- do.call(norm.function, args = list(X=anatMatrix, ...))
+    }
+    
   }
   
   # Set up text progress bar
@@ -42,9 +54,13 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="c
       if (is.null(norm.function)) {
         norm_vol_union <- normAnatMatrix[,i] + normAnatMatrix[,j]
       } else {
-        norm_vol_union <- do.call(norm.function, args = list(X=(anatMatrix[,i] + anatMatrix[,j]), ...))
+        if (quote(norm.function)=="normByModel") {
+          norm_vol_union <- do.call(norm.function, args = list(X=(anatMatrix[,i] + anatMatrix[,j]), train.indices=train.indices, ...))
+        } else {
+          norm_vol_union <- do.call(norm.function, args = list(X=(anatMatrix[,i] + anatMatrix[,j]), ...))
+        }
       }
-      assoc_mtx[i, j] <- assoc_mtx[j, i] <- min(cor(norm_vol_union, normAnatMatrix[,i]), cor(norm_vol_union, normAnatMatrix[,j]))
+      assoc_mtx[i, j] <- assoc_mtx[j, i] <- min(cor(norm_vol_union[train.indices], normAnatMatrix[train.indices,i]), cor(norm_vol_union[train.indices], normAnatMatrix[train.indices,j]))
       if (verbose) {
         setTxtProgressBar(pb, prog)
         prog <- prog + 1
@@ -104,7 +120,11 @@ hanatFromAnatMatrix <- function(anatMatrix, norm.function=NULL, hclust.method="c
     )
     
     hanat_tree$Do(function(x) {
-      x$normVolumes <- do.call(norm.function, args = list(X=x$volumes, ...))
+      if (quote(norm.function)=="normByModel") {
+        x$normVolumes <- do.call(norm.function, args = list(X=x$volumes, train.indices=train.indices, ...))
+      } else {
+        x$normVolumes <- do.call(norm.function, args = list(X=x$volumes, ...))
+      }
       if (verbose) {
         setTxtProgressBar(pb, prog)
         prog <- prog + 1
