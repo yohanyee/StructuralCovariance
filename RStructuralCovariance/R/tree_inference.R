@@ -81,7 +81,7 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, thres_cor
       distribution <- replicate(n, cor(dfs[sample(1:n_obs, size = n_obs, replace=TRUE),])[1,2])
       retval <- do.call(apply.fun, args=list(distribution))
       k <- k+1
-      if (k > 10) {
+      if (k > 10000) {
         stop("Bootstrapping does not return a valid output")
       }
     }
