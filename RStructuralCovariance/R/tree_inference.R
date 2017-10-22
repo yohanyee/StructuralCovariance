@@ -75,8 +75,17 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, thres_cor
     y <- GetAttribute(FindNode(hanat, sj), volattr)[indices]
     dfs <- data.frame(x=x, y=y)
     n_obs <- dim(dfs)[1]
-    distribution <- replicate(n, cor(dfs[sample(1:n_obs, size = n_obs, replace=TRUE),])[1,2])
-    return(do.call(apply.fun, args=list(distribution)))
+    retval <- NA
+    k <- 0
+    while (is.na(retval)) {
+      distribution <- replicate(n, cor(dfs[sample(1:n_obs, size = n_obs, replace=TRUE),])[1,2])
+      retval <- do.call(apply.fun, args=list(distribution))
+      k <- k+1
+      if (k > 10) {
+        stop("Bootstrapping does not return a valid output")
+      }
+    }
+    return(retval)
   }
   
   # Initialize data
