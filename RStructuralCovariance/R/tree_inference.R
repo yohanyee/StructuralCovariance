@@ -180,7 +180,7 @@ update_beta_prior <- function(a, b, rho, threshold, precision_cor=10, precision_
 
 # Convert a probability (that r > cor_thres) to a correlation coefficient via the Fisher transform
 p2r <- function(prob, cor_thres, n) {
-  return(tanh(qnorm(prob, mean=atanh(cor_thres), sd = sqrt(n)/sqrt(n-3))))
+  return(tanh(qnorm(prob, mean=atanh(cor_thres), sd = 1/sqrt(n-3))))
 }
 
 # Old functions ----
