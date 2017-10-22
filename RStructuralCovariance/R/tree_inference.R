@@ -111,11 +111,11 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, thres_cor
   out_prior <- list()
   out_prior$r_raw <- cor(GetAttribute(FindNode(hanat, struc_i), volattr)[indices], GetAttribute(FindNode(hanat, struc_j), volattr)[indices])
   out_prior$r_bootstrapped <- measured_cor
-  out_prior$proba <- (init_params[1] - 1) / (init_params[1] + init_params[2] - 2)
+  out_prior$proba <- as.numeric((init_params[1] - 1) / (init_params[1] + init_params[2] - 2))
   out_prior$params <- init_params
   
   out_posterior <- list()
-  out_posterior$proba <- (updated_params[1] - 1) / (updated_params[1] + updated_params[2] - 2)
+  out_posterior$proba <- as.numeric((updated_params[1] - 1) / (updated_params[1] + updated_params[2] - 2))
   out_posterior$params <- updated_params
   out_posterior$r <- p2r(out_posterior$proba, cor_thres = thres_cor, n=length(indices))
   
