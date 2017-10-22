@@ -1,7 +1,7 @@
 # TODO: test on two structures that share the same parent
 #' Correlation coefficient inference via Bayesian updating on hierarchical anatomy
 #' 
-#' @description Function that computes the posterior probability that the correlation between two structures' properties are greater than some threshold, and optionally a posterior correlation coefficient itself, given a tree structure of anatomy. 
+#' @description Function that computes the posterior probability that the correlation between two structures' properties are greater than some threshold, along with a posterior correlation coefficient, given a tree structure of anatomy. 
 #' See the details section below for more information.
 #' 
 #' @details Correlation matrices constructed from small samples (e.g. n=10) drawn from the same population are generally not very robust, in the sense that across multiple draws, each correlation coefficient varies quite a bit.
@@ -13,25 +13,32 @@
 #' and exploiting such constraints might provide better estimates of correlations between structural properties than the raw sample correlation coefficient.
 #' This function uses a Bayesian framework and exploits the hierarchical structure of anatomy in order to better estimate the correlation coefficient between two given structures. 
 #' Briefly, the probability that the correlation between two structures is greater than a threshold value is inferred by recursively computing correlations between their parent structures, and updating this probability (modeled as a beta distribution).
-#' Optionally, a mapping from probability to correlation can be also specified to convert the final probability to a posterior correlation.
+#' A mapping from probability to correlation is also achieved via the Fisher transform to obtain a posterior correlation.
 #' 
 #' @param hanat Hierarchical anatomy tree giving relationship between structures and their parents.
 #' @param struc_i Structure name (must be contained as \code{name} attribute in some node of \code{hanat}).
 #' @param struc_j Structure name (must be contained as \code{name} attribute in some node of \code{hanat}).
 #' @param indices Optional set of indices that indicate which volumes/observations to use in computing the posterior data. This is useful if you store all volumes across different experimental groups in the tree, and want to separately compute the posterior data in different groups.
-#' @param p2r.table Optional table (output of \code{probability_to_rho_table()}) that maps probabilities to correlations. Provide this is you want a posterior correlation estimate.
-#' @param thres_cor Threshold correlation from which to calculate the probability. Default is 0.
+#' @param thres_cor Optional, threshold correlation from which to calculate the probability. If \code{NULL}, thres_cor is automatically set as the raw correlation coefficient (all observations, independent of indices chosen).
 #' @param precision_cor Optional parameter to tune the width of the distribution of the correlation coefficient p(r). By default this is equal to the number of indices (if provided) or volumes/observations (if indices are not provided).
 #' @param precision_sampling Optional parameter to tune the quality of the estimated distributions, which are calculated by sampling a number of times given by this parameter.
 #' @param volattr Attribute name in the anatomy tree \code{hanat} that contains the volume data from which correlations are computed.
 #' @return a list of posterior data including the probability that the posterior correlation is above the input threshold, and (if \code{p2r.table} is provided), a posterior correlation.
 #' 
 #' @export
-posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table=NULL, thres_cor=0., precision_cor=NULL, precision_sampling=100, volattr="normVolumes") {
+posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, thres_cor=NULL, precision_cor=NULL, precision_sampling=100, volattr="normVolumes") {
+  
+  # Set inputs
+  inputs <- list(struc_i=struc_i, struc_j=struc_j, indices=indices, thres_cor=thres_cor, precision_cor=precision_cor, precision_sampling=precision_sampling, volattr=volattr)
   
   # Check that structures are different
   if (struc_i==struc_j) {
     stop("Structures must be different")
+  }
+  
+  # Set thres_cor if required
+  if (is.null(thres_cor)) {
+    thres_cor <- cor(GetAttribute(FindNode(hanat, struc_i), volattr), GetAttribute(FindNode(hanat, struc_j), volattr))
   }
   
   # Set indices
@@ -100,21 +107,35 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, p2r.table
   
   # Outputs
   out <- list()
-  out$r_measured_raw <- cor(GetAttribute(FindNode(hanat, struc_i), volattr)[indices], GetAttribute(FindNode(hanat, struc_j), volattr)[indices])
-  out$r_measured_bootstrapped <- measured_cor
-  out$prior_proba <- (init_params[1] - 1) / (init_params[1] + init_params[2] - 2)
-  out$posterior_proba <- (updated_params[1] - 1) / (updated_params[1] + updated_params[2] - 2)
-  out$posterior_params <- updated_params
-  out$update_cors_list <- update_cors_list
-  out$updated_params_list <- updated_params_list
-  out$num_updates <- num_updates
-  out$levels <- list(larger=level_larger, smaller=level_smaller, merge=level_merge)
+
+  out_prior <- list()
+  out_prior$r_raw <- cor(GetAttribute(FindNode(hanat, struc_i), volattr)[indices], GetAttribute(FindNode(hanat, struc_j), volattr)[indices])
+  out_prior$r_bootstrapped <- measured_cor
+  out_prior$proba <- (init_params[1] - 1) / (init_params[1] + init_params[2] - 2)
+  out_prior$params <- init_params
   
-  if (is.null(p2r.table)) {
-    out$r_posterior <- NA
-  } else {
-    out$r_posterior <- beta_to_rho(a=updated_params[1], b=updated_params[2], p2r.table=p2r.table, precision_sampling = precision_sampling*10, retval = "median")
-  }
+  out_posterior <- list()
+  out_posterior$proba <- (updated_params[1] - 1) / (updated_params[1] + updated_params[2] - 2)
+  out_posterior$params <- updated_params
+  out_posterior$r <- p2r(out_posterior$proba, cor_thres = thres_cor, n=length(indices))
+  
+  out_updates <- list()
+  out_updates$update_cors_list <- update_cors_list
+  out_updates$updated_params_list <- updated_params_list
+  out_updates$num_updates <- num_updates
+  
+  out_options <- list()
+  out_options$n_indices <- length(indices)
+  out_options$precision_cor <- precision_cor
+  out_options$thres_cor <- thres_cor
+  
+  out$inputs <- inputs
+  out$levels <- list(larger=level_larger, smaller=level_smaller, merge=level_merge)
+  out$prior <- out_prior
+  out$posterior <- out_posterior
+  out$updates <- out_updates
+  out$options <- out_options
+  
   return(out)
 }
 
@@ -157,40 +178,47 @@ update_beta_prior <- function(a, b, rho, threshold, precision_cor=10, precision_
   return(new_params)
 }
 
-# Transform probability of connection above threshold, to a correlation coefficient
-beta_to_rho <- function(a, b, p2r.table, precision_sampling=1000, retval="median") {
-  probability_values <- rbeta(precision_sampling, a, b)
-  rho_values <- numeric(precision_sampling)
-  for (i in 1:precision_sampling) {
-    probability <- probability_values[i]
-    rho_values[i] <- p2r.table$rho[which.min(abs(p2r.table$prob - probability))]
-  }
-  if (retval=="distribution") {
-    return(rho_values)
-  } else {
-    return(do.call(retval, list(x=rho_values)))
-  }
+# Convert a probability (that r > cor_thres) to a correlation coefficient via the Fisher transform
+p2r <- function(prob, cor_thres, n) {
+  return(tanh(qnorm(prob, mean=atanh(cor_thres), sd = sqrt(n)/sqrt(n-3))))
 }
+
+# Old functions ----
+
+# Transform probability of connection above threshold, to a correlation coefficient
+# beta_to_rho <- function(a, b, p2r.table, precision_sampling=1000, retval="median") {
+#   probability_values <- rbeta(precision_sampling, a, b)
+#   rho_values <- numeric(precision_sampling)
+#   for (i in 1:precision_sampling) {
+#     probability <- probability_values[i]
+#     rho_values[i] <- p2r.table$rho[which.min(abs(p2r.table$prob - probability))]
+#   }
+#   if (retval=="distribution") {
+#     return(rho_values)
+#   } else {
+#     return(do.call(retval, list(x=rho_values)))
+#   }
+# }
 
 # Given threshold rho, generate a transformation table mapping probability of being above threshold to correlation coefficient
 # Is this just tan(prob) / arctanh(prob), with a scaling factor to account for num_samples??
 # TODO: this can be parallelized
-probability_to_rho_table <- function(threshold=0., stepsize=0.01, precision_cor=10, precision_sampling=10000, show_progress=TRUE) {
-  rhos <- seq(from=-1, to=1, by=stepsize)
-  num_rows <- length(rhos)
-  p2r.table <- data.frame(rho=numeric(num_rows), prob=numeric(num_rows))
-  if (show_progress) {
-    pb <- txtProgressBar(min=0, max=num_rows, style = 3)
-  }
-  for (i in 1:length(rhos)) {
-    rho <- rhos[i]
-    probability <- length(which(sample_from_cor(rho, d = precision_cor, samples=precision_sampling) > threshold))/precision_sampling
-    p2r.table$rho[i] <- rho
-    p2r.table$prob[i] <- probability
-    if (show_progress) {
-      setTxtProgressBar(pb, i)
-    }
-  }
-  return(p2r.table)
-}
-
+# probability_to_rho_table <- function(threshold=0., stepsize=0.01, precision_cor=10, precision_sampling=10000, show_progress=TRUE) {
+#   rhos <- seq(from=-1, to=1, by=stepsize)
+#   num_rows <- length(rhos)
+#   p2r.table <- data.frame(rho=numeric(num_rows), prob=numeric(num_rows))
+#   if (show_progress) {
+#     pb <- txtProgressBar(min=0, max=num_rows, style = 3)
+#   }
+#   for (i in 1:length(rhos)) {
+#     rho <- rhos[i]
+#     probability <- length(which(sample_from_cor(rho, d = precision_cor, samples=precision_sampling) > threshold))/precision_sampling
+#     p2r.table$rho[i] <- rho
+#     p2r.table$prob[i] <- probability
+#     if (show_progress) {
+#       setTxtProgressBar(pb, i)
+#     }
+#   }
+#   return(p2r.table)
+# }
+# 

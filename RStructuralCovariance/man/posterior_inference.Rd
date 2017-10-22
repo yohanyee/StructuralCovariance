@@ -5,8 +5,8 @@
 \title{Correlation coefficient inference via Bayesian updating on hierarchical anatomy}
 \usage{
 posterior_inference(hanat, struc_i, struc_j, indices = NULL,
-  p2r.table = NULL, thres_cor = 0, precision_cor = NULL,
-  precision_sampling = 100, volattr = "normVolumes")
+  thres_cor = NULL, precision_cor = NULL, precision_sampling = 100,
+  volattr = "normVolumes")
 }
 \arguments{
 \item{hanat}{Hierarchical anatomy tree giving relationship between structures and their parents.}
@@ -17,9 +17,7 @@ posterior_inference(hanat, struc_i, struc_j, indices = NULL,
 
 \item{indices}{Optional set of indices that indicate which volumes/observations to use in computing the posterior data. This is useful if you store all volumes across different experimental groups in the tree, and want to separately compute the posterior data in different groups.}
 
-\item{p2r.table}{Optional table (output of \code{probability_to_rho_table()}) that maps probabilities to correlations. Provide this is you want a posterior correlation estimate.}
-
-\item{thres_cor}{Threshold correlation from which to calculate the probability. Default is 0.}
+\item{thres_cor}{Optional, threshold correlation from which to calculate the probability. If \code{NULL}, thres_cor is automatically set as the raw correlation coefficient (all observations, independent of indices chosen).}
 
 \item{precision_cor}{Optional parameter to tune the width of the distribution of the correlation coefficient p(r). By default this is equal to the number of indices (if provided) or volumes/observations (if indices are not provided).}
 
@@ -31,7 +29,7 @@ posterior_inference(hanat, struc_i, struc_j, indices = NULL,
 a list of posterior data including the probability that the posterior correlation is above the input threshold, and (if \code{p2r.table} is provided), a posterior correlation.
 }
 \description{
-Function that computes the posterior probability that the correlation between two structures' properties are greater than some threshold, and optionally a posterior correlation coefficient itself, given a tree structure of anatomy. 
+Function that computes the posterior probability that the correlation between two structures' properties are greater than some threshold, along with a posterior correlation coefficient, given a tree structure of anatomy. 
 See the details section below for more information.
 }
 \details{
@@ -44,5 +42,5 @@ Typically biological studies are not fortunate to have sample sizes that large. 
 and exploiting such constraints might provide better estimates of correlations between structural properties than the raw sample correlation coefficient.
 This function uses a Bayesian framework and exploits the hierarchical structure of anatomy in order to better estimate the correlation coefficient between two given structures. 
 Briefly, the probability that the correlation between two structures is greater than a threshold value is inferred by recursively computing correlations between their parent structures, and updating this probability (modeled as a beta distribution).
-Optionally, a mapping from probability to correlation can be also specified to convert the final probability to a posterior correlation.
+A mapping from probability to correlation is also achieved via the Fisher transform to obtain a posterior correlation.
 }
