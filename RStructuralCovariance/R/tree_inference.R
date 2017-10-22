@@ -81,6 +81,7 @@ posterior_inference <- function(hanat, struc_i, struc_j, indices=NULL, thres_cor
   
   # Initialize data
   init_cor <- boot_cor(hanat, si_ancestors[1], sj_ancestors[1], volattr, indices)
+  measured_cor <- init_cor
   init_params <- fit_beta(init_cor, thres_cor, precision_cor = precision_cor, precision_sampling = precision_sampling)
   update_cors_list <- list()
   updated_params_list <- list()
