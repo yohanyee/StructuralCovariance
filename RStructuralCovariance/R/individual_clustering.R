@@ -100,24 +100,24 @@ cluster_individuals <- function(vols, energy_function, cluster_size=9, batch_siz
   return(list(membership=membership, iteration_energies=data.frame(iteration=iter_vec, energy=energy_vec)))
 }
 
-res <- cluster_individuals(vols, "energy_matrix_distance", cluster_size = 20, batch_size = 100, tol=1e-03, temperature = 100, max_iter = 1000)
+#res <- cluster_individuals(vols, "energy_matrix_distance", cluster_size = 20, batch_size = 100, tol=1e-03, temperature = 100, max_iter = 1000)
 
-res <- cluster_individuals(vols, "energy_integration_segregation", cluster_size = 20, batch_size = 100, tol=1e-03, temperature = 1000, threshold=0.7, max_iter = 10000, r=10)
-a <- res$iteration_energies
-qplot(a$iteration, a$energy)
+#res <- cluster_individuals(vols, "energy_integration_segregation", cluster_size = 20, batch_size = 100, tol=1e-03, temperature = 1000, threshold=0.7, max_iter = 10000, r=10)
+#a <- res$iteration_energies
+#qplot(a$iteration, a$energy)
 
-membership <- res$membership
+#membership <- res$membership
 
-scans[which(membership==1),c("Mouse_ID", "Study_Name", "Genotype")]
+#scans[which(membership==1),c("Mouse_ID", "Study_Name", "Genotype")]
 
-sf <- scans[,c("Study_Name", "Is_Wildtype")]
-sf$membership <- membership
-sf$Is_Wildtype <- factor(sf$Is_Wildtype)
+#sf <- scans[,c("Study_Name", "Is_Wildtype")]
+#sf$membership <- membership
+#sf$Is_Wildtype <- factor(sf$Is_Wildtype)
 
-geno_table <- table(sf$Is_Wildtype, sf$membership)
-study_table <- table(sf[which(sf$Is_Wildtype=="MUT"),]$Study_Name, sf[which(sf$Is_Wildtype=="MUT"),]$membership)
+#geno_table <- table(sf$Is_Wildtype, sf$membership)
+#study_table <- table(sf[which(sf$Is_Wildtype=="MUT"),]$Study_Name, sf[which(sf$Is_Wildtype=="MUT"),]$membership)
 
-study_table
+#study_table
 
-chisq.test(geno_table)
-chisq.test(study_table)
+#chisq.test(geno_table)
+#chisq.test(study_table)
